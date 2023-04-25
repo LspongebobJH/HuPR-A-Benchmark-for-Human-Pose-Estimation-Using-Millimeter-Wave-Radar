@@ -34,10 +34,13 @@ class RadarObject():
         self.initialize(numGroup)
 
     def initialize(self, numGroup):
-        for i in range(1, numGroup + 1):
+        # for i in range(1, numGroup + 1):
+        for i in [15, 16, 38, 40, 41, 42,
+               17, 39,  244, 245, 246, 249, 250, 251, 252, 253, 254,
+               247, 248, 255, 256]: # TODO: only preprocess test sets
             radarDataFileName = ['raw_data/' + self.sensorType + '/' + self.root + '/single_' + str(i) + '/hori', 
                                  'raw_data/' + self.sensorType + '/' + self.root + '/single_' + str(i) + '/vert']
-            saveDirName = '../data/' + self.saveRoot + '/single_' + str(i)
+            saveDirName = 'data/' + self.saveRoot + '/single_' + str(i)
             rgbFileName = 'frames/' + self.root + '/single_' + str(i) + '/processed/images'
             #jointsFileName = '../data/' + self.saveRoot + '/single_' + str(i) + '/annot/hrnet_annot.json'
             self.radarDataFileNameGroup.append(radarDataFileName)
