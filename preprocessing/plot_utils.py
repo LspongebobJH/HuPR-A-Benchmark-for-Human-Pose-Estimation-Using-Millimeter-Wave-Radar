@@ -52,7 +52,7 @@ def generate_target(joints, numKeypoints):
         :param joints_vis: [num_joints, 3]
         :return: target, target_weight(1: visible, 0: invisible)
         '''
-        #target_weight = np.ones((self.num_joints, 1), dtype=np.float32)
+        #target_weight = np.ones((self.num_joints, 1), dtype=float)
         #target_weight[:, 0] = joints_vis[:, 0]
         sigma = 2 #cfg.MODEL.SIGMA
         heatmapSize = np.array([64, 64])
@@ -63,7 +63,7 @@ def generate_target(joints, numKeypoints):
         target = np.zeros((numKeypoints,
                            heatmapSize[1],
                            heatmapSize[0]),
-                          dtype=np.float32)
+                          dtype=float)
 
         tmp_size = sigma * 3
 
@@ -84,7 +84,7 @@ def generate_target(joints, numKeypoints):
 
             # # Generate gaussian
             size = 2 * tmp_size + 1
-            x = np.arange(0, size, 1, np.float32)
+            x = np.arange(0, size, 1, float)
             y = x[:, np.newaxis]
             x0 = y0 = size // 2
             # The gaussian is not normalized, we want the center value to equal 1

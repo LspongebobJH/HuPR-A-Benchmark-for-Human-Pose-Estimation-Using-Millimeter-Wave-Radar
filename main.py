@@ -19,7 +19,7 @@ if __name__ == "__main__":
                         help='random seed (default: 0)')
     parser.add_argument('--dir', type=str, default='', metavar='B',
                         help='directory of saving/loading')
-    parser.add_argument('--visDir', type=str, default='none', metavar='B',
+    parser.add_argument('--visDir', type=str, default='', metavar='B',
                         help='directory of visualization')
     parser.add_argument('--config', type=str, default='mscsa_prgcn.yaml', metavar='B',
                         help='directory of configuration')

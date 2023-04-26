@@ -52,7 +52,7 @@ class RadarObject():
             radarDataFileName = ['raw_data/' + self.sensorType + '/' + self.root + '/single_' + str(i) + '/hori', 
                                  'raw_data/' + self.sensorType + '/' + self.root + '/single_' + str(i) + '/vert']
             saveDirName = 'data/' + self.saveRoot + '/single_' + str(i)
-            rgbFileName = 'frames/' + self.root + '/single_' + str(i) + '/processed/images'
+            rgbFileName = 'frames/' + self.root + '/single_' + str(i)
             #jointsFileName = '../data/' + self.saveRoot + '/single_' + str(i) + '/annot/hrnet_annot.json'
             self.radarDataFileNameGroup.append(radarDataFileName)
             self.saveDirNameGroup.append(saveDirName)

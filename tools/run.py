@@ -37,26 +37,26 @@ class Runner(BaseRunner):
         loss_list = []
         self.logger.clear(len(self.testLoader.dataset))
         savePreds = []
-        for idx, batch in enumerate(self.testLoader):
-            keypoints = batch['jointsGroup']
-            bbox = batch['bbox']
-            imageId = batch['imageId']
-            with torch.no_grad():
-                VRDAEmaps_hori = batch['VRDAEmap_hori'].float().to(self.device)
-                VRDAEmaps_vert = batch['VRDAEmap_vert'].float().to(self.device)
-                preds = self.model(VRDAEmaps_hori, VRDAEmaps_vert)
-                loss, loss2, preds, gts = self.lossComputer.computeLoss(preds, keypoints)
-                self.logger.display(loss, loss2, keypoints.size(0), epoch)
-                if visualization:
-                    plotHumanPose(preds*self.imgHeatmapRatio, self.cfg, 
-                                  self.visDir, imageId, None)
-                    # for drawing GT
-                    # plotHumanPose(gts*self.imgHeatmapRatio, self.cfg, 
-                    #               self.visDir, imageId, None)
+        # for idx, batch in enumerate(self.testLoader):
+        #     keypoints = batch['jointsGroup']
+        #     bbox = batch['bbox']
+        #     imageId = batch['imageId']
+        #     with torch.no_grad():
+        #         VRDAEmaps_hori = batch['VRDAEmap_hori'].float().to(self.device)
+        #         VRDAEmaps_vert = batch['VRDAEmap_vert'].float().to(self.device)
+        #         preds = self.model(VRDAEmaps_hori, VRDAEmaps_vert)
+        #         loss, loss2, preds, gts = self.lossComputer.computeLoss(preds, keypoints)
+        #         self.logger.display(loss, loss2, keypoints.size(0), epoch)
+        #         if visualization:
+        #             plotHumanPose(preds*self.imgHeatmapRatio, self.cfg, 
+        #                           self.visDir, imageId, None)
+        #             # for drawing GT
+        #             # plotHumanPose(gts*self.imgHeatmapRatio, self.cfg, 
+        #             #               self.visDir, imageId, None)
 
-            self.saveKeypoints(savePreds, preds*self.imgHeatmapRatio, bbox, imageId)
-            loss_list.append(loss.item())
-        self.writeKeypoints(savePreds)
+        #     self.saveKeypoints(savePreds, preds*self.imgHeatmapRatio, bbox, imageId)
+        #     loss_list.append(loss.item())
+        # self.writeKeypoints(savePreds)
         if self.args.keypoints:
             accAP = self.testSet.evaluateEach(self.dir)
         accAP = self.testSet.evaluate(self.dir)

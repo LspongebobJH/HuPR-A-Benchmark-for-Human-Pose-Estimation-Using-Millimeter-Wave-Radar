@@ -19,7 +19,7 @@ def generateTarget(joints, numKeypoints, hSize, iSize, isCoord=False, sigmas=Non
     target = np.zeros((numKeypoints,
                        heatmapSize[1],
                        heatmapSize[0]),
-                      dtype=np.float32)
+                      dtype=float)
 
     targetKpts = np.zeros((numKeypoints, 2))
 
@@ -44,7 +44,7 @@ def generateTarget(joints, numKeypoints, hSize, iSize, isCoord=False, sigmas=Non
 
         # # Generate gaussian
         size = 2 * tmp_size + 1
-        x = np.arange(0, size, 1, np.float32)
+        x = np.arange(0, size, 1, float)
         y = x[:, np.newaxis]
         x0 = y0 = size // 2
         # The gaussian is not normalized, we want the center value to equal 1

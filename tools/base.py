@@ -47,7 +47,7 @@ class BaseRunner():
             self.optimizer = optim.Adam(self.model.parameters(), lr=LR, betas=(0.9, 0.999), weight_decay=1e-4)
 
     def _xywh2cs(self, x, y, w, h):
-        center = np.zeros((2), dtype=np.float32)
+        center = np.zeros((2), dtype=float)
         center[0] = x + w * 0.5
         center[1] = y + h * 0.5
 
@@ -57,7 +57,7 @@ class BaseRunner():
             w = h * self.aspectRatio
         scale = np.array(
             [w * 1.0 / self.pixel_std, h * 1.0 / self.pixel_std],
-            dtype=np.float32)
+            dtype=float)
         if center[0] != -1:
             scale = scale * 1.25
 
