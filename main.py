@@ -17,12 +17,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', type=int, default=0, metavar='S',
                         help='random seed (default: 0)')
-    parser.add_argument('--dir', type=str, default='test', metavar='B',
+    parser.add_argument('--dir', type=str, default='', metavar='B',
                         help='directory of saving/loading')
     parser.add_argument('--visDir', type=str, default='none', metavar='B',
                         help='directory of visualization')
-    parser.add_argument('--config', type=str, default='20211106/test.yaml', metavar='B',
-                        help='directory of visualization')
+    parser.add_argument('--config', type=str, default='mscsa_prgcn.yaml', metavar='B',
+                        help='directory of configuration')
     parser.add_argument('--gpuIDs', default=[0], type=eval, help='IDs of GPUs to use')                        
     parser.add_argument('--eval', action="store_true")
     parser.add_argument('-sr', '--sampling_ratio', type=int, default=1, help='sampling ratio for training/test (default: 1)')
