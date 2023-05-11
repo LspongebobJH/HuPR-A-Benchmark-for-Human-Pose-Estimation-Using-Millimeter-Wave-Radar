@@ -5,3 +5,5 @@ data/*
 raw_data/*
 launch.json
 visualization/*
+video/*
+.*

@@ -46,13 +46,14 @@ class RadarObject():
             _list = [250, 251, 252, 253]
         elif self.index == 5:
             _list = [254, 247, 248, 255, 256]
+        self._list = _list
             
         # for i in range(1, numGroup + 1):
         for i in _list:
             radarDataFileName = ['raw_data/' + self.sensorType + '/' + self.root + '/single_' + str(i) + '/hori', 
                                  'raw_data/' + self.sensorType + '/' + self.root + '/single_' + str(i) + '/vert']
             saveDirName = 'data/' + self.saveRoot + '/single_' + str(i)
-            rgbFileName = 'frames/' + self.root + '/single_' + str(i)
+            rgbFileName = 'raw_data/frames/' + '/single_' + str(i)
             #jointsFileName = '../data/' + self.saveRoot + '/single_' + str(i) + '/annot/hrnet_annot.json'
             self.radarDataFileNameGroup.append(radarDataFileName)
             self.saveDirNameGroup.append(saveDirName)
@@ -210,8 +211,8 @@ class RadarObject():
                 print('%s, finished frame %d' % (self.radarDataFileNameGroup[idxName][0], idxFrame), end='\r')
     
     def loadDataPlot(self):
-        for idxName in range(len(self.radarDataFileNameGroup)):
-            with open(self.jointsFileNameGroup[idxName], "r") as fp:
+        for idxName in [0, 1, 2, 3]:
+            with open('data/HuPR/hrnet_annot_test.json', "r") as fp:
                 annotGroup = json.load(fp)
             for idxFrame in range(0,self.numFrame):
                 hori_path = self.saveDirNameGroup[idxName] + '/hori' + ('/%09d' % idxFrame) + '.npy'
@@ -222,18 +223,20 @@ class RadarObject():
                 outputVert = np.mean(np.abs(outputVert), axis=(0, 3))
                 visDirName = self.saveDirNameGroup[idxName] + '/visualization' + ('/%09d.png' % idxFrame)
                 img = np.array(Image.open(self.rgbFileNameGroup[idxName] + "/%09d.jpg" % idxFrame).convert('RGB'))
-                joints = annotGroup[idxFrame]['joints']
+                joints = annotGroup[idxName][idxFrame]['joints']
                 self.saveDataAsFigure(img, joints, outputHori, visDirName, idxFrame, outputVert)
                 print('%s, finished frame %d' % (self.radarDataFileNameGroup[idxName][0], idxFrame), end='\r')
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('--index', type=int)
-    index = parser.parse_args().index
+    parser.add_argument('--vis', default=False, action='store_true')
+    args = parser.parse_args()
+    index = args.index
     
-    visualization = False
+    visualization = args.vis
     radarObject = RadarObject(index)
     if not visualization:
         radarObject.processRadarDataHoriVert()
-    #else:
-    #    radarObject.loadDataPlot()
+    else:
+        radarObject.loadDataPlot()
