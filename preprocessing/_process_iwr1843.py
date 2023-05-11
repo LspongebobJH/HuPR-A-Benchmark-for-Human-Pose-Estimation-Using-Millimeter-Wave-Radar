@@ -3,12 +3,10 @@ import numpy as np
 from PIL import Image
 from plot_utils import PlotMaps, PlotHeatmaps
 
-from argparse import ArgumentParser
+
 
 class RadarObject():
-    def __init__(self, index):
-        self.index = index
-
+    def __init__(self):
         numGroup = 276
         self.root = 'HuPR'
         self.saveRoot = 'HuPR'
@@ -36,24 +34,11 @@ class RadarObject():
         self.initialize(numGroup)
 
     def initialize(self, numGroup):
-        if self.index == 1:
-            _list = [15, 16, 38, 40]
-        elif self.index == 2:
-            _list = [41, 42, 17, 39]
-        elif self.index == 3:
-            _list = [244, 245, 246, 249]
-        elif self.index == 4:
-            _list = [250, 251, 252, 253]
-        elif self.index == 5:
-            _list = [254, 247, 248, 255, 256]
-        self._list = _list
-            
-        # for i in range(1, numGroup + 1):
-        for i in _list:
+        for i in range(1, numGroup + 1):
             radarDataFileName = ['raw_data/' + self.sensorType + '/' + self.root + '/single_' + str(i) + '/hori', 
                                  'raw_data/' + self.sensorType + '/' + self.root + '/single_' + str(i) + '/vert']
             saveDirName = 'data/' + self.saveRoot + '/single_' + str(i)
-            rgbFileName = 'raw_data/frames/' + '/single_' + str(i)
+            rgbFileName = 'frames/' + self.root + '/single_' + str(i) + '/processed/images'
             #jointsFileName = '../data/' + self.saveRoot + '/single_' + str(i) + '/annot/hrnet_annot.json'
             self.radarDataFileNameGroup.append(radarDataFileName)
             self.saveDirNameGroup.append(saveDirName)
@@ -211,8 +196,8 @@ class RadarObject():
                 print('%s, finished frame %d' % (self.radarDataFileNameGroup[idxName][0], idxFrame), end='\r')
     
     def loadDataPlot(self):
-        for idxName in [0, 1, 2, 3]:
-            with open('data/HuPR/hrnet_annot_test.json', "r") as fp:
+        for idxName in range(len(self.radarDataFileNameGroup)):
+            with open(self.jointsFileNameGroup[idxName], "r") as fp:
                 annotGroup = json.load(fp)
             for idxFrame in range(0,self.numFrame):
                 hori_path = self.saveDirNameGroup[idxName] + '/hori' + ('/%09d' % idxFrame) + '.npy'
@@ -223,20 +208,14 @@ class RadarObject():
                 outputVert = np.mean(np.abs(outputVert), axis=(0, 3))
                 visDirName = self.saveDirNameGroup[idxName] + '/visualization' + ('/%09d.png' % idxFrame)
                 img = np.array(Image.open(self.rgbFileNameGroup[idxName] + "/%09d.jpg" % idxFrame).convert('RGB'))
-                joints = annotGroup[idxName][idxFrame]['joints']
+                joints = annotGroup[idxFrame]['joints']
                 self.saveDataAsFigure(img, joints, outputHori, visDirName, idxFrame, outputVert)
                 print('%s, finished frame %d' % (self.radarDataFileNameGroup[idxName][0], idxFrame), end='\r')
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument('--index', type=int)
-    parser.add_argument('--vis', default=False, action='store_true')
-    args = parser.parse_args()
-    index = args.index
-    
-    visualization = args.vis
-    radarObject = RadarObject(index)
+    visualization = False
+    radarObject = RadarObject()
     if not visualization:
         radarObject.processRadarDataHoriVert()
-    else:
-        radarObject.loadDataPlot()
+    #else:
+    #    radarObject.loadDataPlot()
