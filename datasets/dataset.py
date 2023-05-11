@@ -15,7 +15,7 @@ def getDataset(phase, cfg, args, random=True):
     return HuPR3D_horivert(phase, cfg, args, random)
 
 class HuPR3D_horivert(BaseDataset):
-    def __init__(self, phase, cfg, args, random=True):
+    def __init__(self, phase, cfg, args=None, random=True):
         if phase not in ('train', 'val', 'test'):
             raise ValueError('Invalid phase: {}'.format(phase))
         super(HuPR3D_horivert, self).__init__(phase)
@@ -27,7 +27,7 @@ class HuPR3D_horivert(BaseDataset):
         self.w = cfg.DATASET.azimuthSize
         self.h = cfg.DATASET.elevationSize
         self.numKeypoints = cfg.DATASET.numKeypoints
-        self.sampling_ratio = args.sampling_ratio
+        self.sampling_ratio = args.sampling_ratio if args is not None else 1
         self.dirRoot = cfg.DATASET.dataDir
         self.idxToJoints = cfg.DATASET.idxToJoints
         self.random = random
