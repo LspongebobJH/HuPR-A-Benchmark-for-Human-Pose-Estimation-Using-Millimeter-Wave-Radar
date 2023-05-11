@@ -48,11 +48,11 @@ class Runner(BaseRunner):
                 loss, loss2, preds, gts = self.lossComputer.computeLoss(preds, keypoints)
                 self.logger.display(loss, loss2, keypoints.size(0), epoch)
                 if visualization:
-                    # plotHumanPose(preds*self.imgHeatmapRatio, self.cfg, 
-                    #               self.visDir, imageId, None)
-                    # for drawing GT
-                    plotHumanPose(gts*self.imgHeatmapRatio, self.cfg, 
+                    plotHumanPose(preds*self.imgHeatmapRatio, self.cfg, 
                                   self.visDir, imageId, None)
+                    # # for drawing GT
+                    # plotHumanPose(gts*self.imgHeatmapRatio, self.cfg, 
+                    #               self.visDir, imageId, None)
 
             self.saveKeypoints(savePreds, preds*self.imgHeatmapRatio, bbox, imageId)
             loss_list.append(loss.item())
