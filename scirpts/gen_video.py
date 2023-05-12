@@ -1,4 +1,6 @@
 # generate videos for images in visualization/
+import sys
+sys.path.append('/home/ubuntu/hupr')
 
 import cv2
 import os

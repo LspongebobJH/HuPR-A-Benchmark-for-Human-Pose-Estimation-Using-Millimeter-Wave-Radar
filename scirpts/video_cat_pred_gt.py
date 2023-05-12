@@ -1,3 +1,7 @@
+import sys
+sys.path.append('/home/ubuntu/hupr')
+
+
 from os import listdir
 from os.path import join
 from PIL import Image

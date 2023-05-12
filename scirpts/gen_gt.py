@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/home/ubuntu/hupr')
+
 import os
 import cv2
 import math
