@@ -118,11 +118,12 @@ class HuPR3D_horivert(BaseDataset):
             })
         return rec
     def __getitem__(self, index):
+        L = [] # TODO: test
         if self.random:
             index = index * random.randint(1, self.sampling_ratio)
         else:
             index = index * self.sampling_ratio
-        # collect past frames and furture frames for the center target frame
+        # collect past frames and furture frames for the center target frame TODO: WHY? authors didnt take into account adjacent frames!
         padSize = index % self.duration
         idx = index - self.numGroupFrames//2 - 1
         
@@ -140,6 +141,7 @@ class HuPR3D_horivert(BaseDataset):
             VRDAEPath_vert = self.VRDAEPaths_vert[idx]
             VRDAERealImag_hori = np.load(VRDAEPath_hori)
             VRDAERealImag_vert = np.load(VRDAEPath_vert)
+            L.append(self.VRDAEPaths_hori[idx])
 
             idxSampleChirps = 0
             for idxChirps in range(self.numChirps//2 - self.numFrames//2, self.numChirps//2 + self.numFrames//2):
@@ -152,11 +154,13 @@ class HuPR3D_horivert(BaseDataset):
         joints = torch.LongTensor(self.annots[index]['joints'])
         bbox = torch.FloatTensor(self.annots[index]['bbox'])
         imageId = self.annots[index]['imageId']
+        # print(L)
         return {'VRDAEmap_hori': VRDAEmaps_hori,
                 'VRDAEmap_vert': VRDAEmaps_vert,
                 'imageId': imageId,
                 'jointsGroup': joints,
-                'bbox': bbox}
+                'bbox': bbox,
+                'frames': L}
     
     def __len__(self):
         return len(self.VRDAEPaths_hori)//self.sampling_ratio
