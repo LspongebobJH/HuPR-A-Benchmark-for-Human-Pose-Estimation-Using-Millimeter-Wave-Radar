@@ -37,8 +37,12 @@ DATASET:
         ["R_Hip", "R_Knee", "R_Ankle", "L_Hip", "L_Knee", 
          "L_Ankle", "Neck", "Head", "L_Shoulder", "L_Elbow", 
          "L_Wrist", "R_Shoulder", "R_Elbow", "R_Wrist"]
+    shuffle: False # for time series
 MODEL:
     numFilters: 32
+    n_layers: 3
+    # model: "TempPRGCN" # or "PRGCN"
+    model: "PRGCN"
 TRAINING:
     batchSize: 20
     epochs: 200
@@ -53,4 +57,5 @@ TEST:
     batchSize: 32
     plotImgDir: ''
 SETUP:
+    # numWorkers: 0 # TODO: test
     numWorkers: 4

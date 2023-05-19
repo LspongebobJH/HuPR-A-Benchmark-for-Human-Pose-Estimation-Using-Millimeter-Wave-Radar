@@ -11,6 +11,9 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from datasets.base import BaseDataset, generateGTAnnot
 
+import re
+from torch.utils.data import default_collate
+
 def getDataset(phase, cfg, args, random=True):
     return HuPR3D_horivert(phase, cfg, args, random)
 
@@ -117,8 +120,9 @@ class HuPR3D_horivert(BaseDataset):
                 'imageId': obj['image_id']
             })
         return rec
+    
     def __getitem__(self, index):
-        L = [] # TODO: test
+        frames = [] # TODO: test
         if self.random:
             index = index * random.randint(1, self.sampling_ratio)
         else:
@@ -139,9 +143,12 @@ class HuPR3D_horivert(BaseDataset):
                 idx += 1
             VRDAEPath_hori = self.VRDAEPaths_hori[idx]
             VRDAEPath_vert = self.VRDAEPaths_vert[idx]
+
+            frame_idx = re.search(r'\d+', VRDAEPath_hori).group()
+            frames.append(int(frame_idx))
+            
             VRDAERealImag_hori = np.load(VRDAEPath_hori)
             VRDAERealImag_vert = np.load(VRDAEPath_vert)
-            L.append(self.VRDAEPaths_hori[idx])
 
             idxSampleChirps = 0
             for idxChirps in range(self.numChirps//2 - self.numFrames//2, self.numChirps//2 + self.numFrames//2):
@@ -154,13 +161,18 @@ class HuPR3D_horivert(BaseDataset):
         joints = torch.LongTensor(self.annots[index]['joints'])
         bbox = torch.FloatTensor(self.annots[index]['bbox'])
         imageId = self.annots[index]['imageId']
-        # print(L)
         return {'VRDAEmap_hori': VRDAEmaps_hori,
                 'VRDAEmap_vert': VRDAEmaps_vert,
                 'imageId': imageId,
                 'jointsGroup': joints,
                 'bbox': bbox,
-                'frames': L}
+                'frames': torch.Tensor(frames)}
     
     def __len__(self):
         return len(self.VRDAEPaths_hori)//self.sampling_ratio
+    
+def collate_fn(data_list):
+    frames_list = [_data.pop('frames') for _data in data_list]
+    frames_list = torch.stack(frames_list, dim=0)
+    default_collate(data_list)
+    return data_list, frames_list

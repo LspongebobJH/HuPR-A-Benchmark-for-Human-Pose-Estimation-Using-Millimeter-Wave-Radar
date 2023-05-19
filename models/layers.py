@@ -2,7 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.gcn_networks import PRGCN
+from models.gcn_networks import PRGCN, TempPRGCN
 
 
 class BasicBlock2D(nn.Module):
@@ -110,7 +110,10 @@ class MultiScaleCrossSelfAttentionPRGCN(nn.Module):
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],#RElbow
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]#RWrist
         ], dtype=torch.float).cuda()
-        self.gcn = PRGCN(cfg, A)
+        if cfg.MODEL.model == 'PRGCN':
+            self.gcn = PRGCN(cfg, A)
+        elif cfg.MODEL.model == 'TempPRGCN':
+            self.gcn = TempPRGCN(cfg, A)
 
         filterList = [self.numFilters*8, self.numFilters*4, self.numFilters*2]
         self.phi_cross_hori = nn.ModuleList([nn.Conv2d(i, i, 1, 1, 0, bias=False) for i in filterList])

@@ -4,7 +4,7 @@ import numpy as np
 import torch.optim as optim
 from models import HuPRNet
 from misc import plotHumanPose
-from datasets import getDataset
+from datasets.dataset import getDataset, collate_fn
 import torch.utils.data as data
 import torch.nn.functional as F
 from tools.base import BaseRunner
@@ -17,15 +17,17 @@ class Runner(BaseRunner):
             self.trainSet = getDataset('train', cfg, args)
             self.trainLoader = data.DataLoader(self.trainSet,
                                   self.cfg.TRAINING.batchSize,
-                                  shuffle=True,
-                                  num_workers=cfg.SETUP.numWorkers)
+                                  shuffle=cfg.DATASET.shuffle,
+                                  num_workers=cfg.SETUP.numWorkers,
+                                  collate_fn=collate_fn)
         else:
             self.trainLoader = [0] # an empty loader
         self.testSet = getDataset('test' if args.eval else 'val', cfg, args)
         self.testLoader = data.DataLoader(self.testSet, 
                               self.cfg.TEST.batchSize,
                               shuffle=False,
-                              num_workers=cfg.SETUP.numWorkers)
+                              num_workers=cfg.SETUP.numWorkers, 
+                              collate_fn=collate_fn)
         self.model = HuPRNet(self.cfg).to(self.device)
         self.stepSize = len(self.trainLoader) * self.cfg.TRAINING.warmupEpoch
         LR = self.cfg.TRAINING.lr if self.cfg.TRAINING.warmupEpoch == -1 else self.cfg.TRAINING.lr / (self.cfg.TRAINING.warmupGrowth ** self.stepSize)
@@ -37,7 +39,7 @@ class Runner(BaseRunner):
         loss_list = []
         self.logger.clear(len(self.testLoader.dataset))
         savePreds = []
-        for idx, batch in enumerate(self.testLoader):
+        for idx, (batch, frames_list) in enumerate(self.testLoader):
             keypoints = batch['jointsGroup']
             bbox = batch['bbox']
             imageId = batch['imageId']
@@ -67,7 +69,7 @@ class Runner(BaseRunner):
             self.model.train()
             loss_list = []
             self.logger.clear(len(self.trainLoader.dataset))
-            for idxBatch, batch in enumerate(self.trainLoader):
+            for idxBatch, (batch, frames_list) in enumerate(self.trainLoader):
                 self.optimizer.zero_grad()
                 keypoints = batch['jointsGroup']
                 bbox = batch['bbox']

@@ -3,6 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from torch_geometric_temporal import TGCN
+from torch_geometric.utils import dense_to_sparse
+
 class GCN_layers(nn.Module):
     def __init__(self, in_features, out_features, numKeypoints, bias=True):
         super(GCN_layers, self).__init__()
@@ -62,3 +65,45 @@ class PRGCN(nn.Module):
         heatmap = self.gcn_forward(nodeFeat).reshape(-1, self.numKeypoints, (self.height//2), (self.width//2))
         heatmap = F.interpolate(heatmap, scale_factor=2.0, mode='bilinear', align_corners=True)
         return torch.sigmoid(heatmap).unsqueeze(1)
+
+class TempPRGCN(nn.Module):
+    def __init__(self, cfg, A):
+        super(TempPRGCN, self).__init__()
+        self.numGroupFrames = cfg.DATASET.numGroupFrames
+        self.numFilters = cfg.MODEL.numFilters
+        self.width = cfg.DATASET.heatmapSize
+        self.height = cfg.DATASET.heatmapSize
+        self.numKeypoints = cfg.DATASET.numKeypoints
+        self.featureSize = (self.height//2) * (self.width//2)
+        self.A, _ = dense_to_sparse(A)
+        self.n_layers = cfg.MODEL.n_layers
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+
+        self.layers = nn.ModuleList()
+        for _ in range(self.n_layers):
+            self.layers.append(GCN_layers(self.featureSize, self.featureSize, self.numKeypoints))
+
+        self.temp = TGCN(self.featureSize, self.featureSize)
+
+    def generate_node_feature(self, x):
+        x = F.interpolate(x, scale_factor=0.5, mode='bilinear', align_corners=True)
+        x = x.reshape(-1, self.numKeypoints, self.featureSize).permute(0, 2, 1)
+        return x
+
+    def forward(self, x):
+        feat = self.generate_node_feature(x)
+        for layer in self.layers:
+            feat = self.relu(layer(feat, self.A))
+        H = None
+        H_list = []
+        for frame_feat in feat:
+            H = self.temp(frame_feat, self.A, H=H)
+            H_list.append(H)
+        feat = torch.stack(H_list, dim=0)
+        feat = feat.mean(dim=0).reshape(-1, self.numKeypoints, (self.height//2), (self.width//2))
+        return torch.sigmoid(feat).unsqueeze(1)
+        
+        
+    
+
