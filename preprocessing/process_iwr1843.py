@@ -38,6 +38,7 @@ class RadarObject():
         self.initialize(numGroup)
 
     def initialize(self, numGroup):
+        # train
         if self.index == 1:
             _list = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 18, 19, 20, 21, 22, 23, 24, 25, 26]
         elif self.index == 2:
@@ -58,6 +59,16 @@ class RadarObject():
             _list = [235, 236, 258, 261, 262, 265, 266, 267, 268, 271, 272, 275, 276, 225, 226, 231, 232, 233, 234]
         elif self.index == 10:
             _list = [176, 182, 183, 184, 185, 186, 191, 192, 193, 195, 196, 198, 260, 263, 264, 269, 270, 273, 274]
+
+        # validation
+        elif self.index == 11:
+            _list = [1, 14, 34, 57, 65, 98]
+        elif self.index == 12:
+            _list = [56, 99, 159, 178, 101, 120]
+        elif self.index == 13:
+            _list = [137, 156, 161, 164, 181]
+        elif self.index == 14:
+            _list = [194, 197, 205, 257]
 
         self._list = _list
             
