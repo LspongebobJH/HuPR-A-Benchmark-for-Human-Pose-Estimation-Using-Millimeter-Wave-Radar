@@ -17,7 +17,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', type=int, default=0, metavar='S',
                         help='random seed (default: 0)')
-    parser.add_argument('--dir', type=str, default='', metavar='B',
+    parser.add_argument('--logdir', type=str, default='', metavar='B',
                         help='directory of saving/loading')
     parser.add_argument('--visDir', type=str, default='', metavar='B',
                         help='directory of visualization')

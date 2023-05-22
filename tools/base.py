@@ -15,7 +15,7 @@ class BaseRunner():
         np.random.seed(args.seed)
         torch.manual_seed(args.seed)
         torch.cuda.manual_seed_all(args.seed)
-        self.dir = './logs/' + args.dir
+        self.dir = './logs/' + args.logdir
         self.visDir = './visualization/' + args.visDir
         self.args = args
         self.cfg = cfg

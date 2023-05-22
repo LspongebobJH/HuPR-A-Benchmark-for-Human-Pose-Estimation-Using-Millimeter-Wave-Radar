@@ -35,7 +35,9 @@ class HuPR3D_horivert(BaseDataset):
         self.idxToJoints = cfg.DATASET.idxToJoints
         self.random = random
 
-        generateGTAnnot(cfg, phase)
+        if not os.path.exists(os.path.join(self.dirRoot, '%s_gt.json' % phase)):
+            print('Generating %s_gt.json' % phase)
+            generateGTAnnot(cfg, phase)
         self.gtFile = os.path.join(self.dirRoot, '%s_gt.json' % phase)
         self.coco = COCO(self.gtFile)
         self.imageIds = self.coco.getImgIds()
