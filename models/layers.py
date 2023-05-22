@@ -135,7 +135,7 @@ class MultiScaleCrossSelfAttentionPRGCN(nn.Module):
         maps = maps.view(b, c, h, w)
         return maps
 
-    def forward(self, ral1maps, ral2maps, ramaps, rel1maps, rel2maps, remaps):
+    def forward(self, ral1maps, ral2maps, ramaps, rel1maps, rel2maps, remaps, video_id):
         ramaps_res = ramaps
         remaps_res = remaps
         k3_c_hori = self.phi_cross_hori[0](ramaps)
@@ -183,7 +183,7 @@ class MultiScaleCrossSelfAttentionPRGCN(nn.Module):
         rel1maps_cross = self.attention(k1_c_vert, q1_c_hori, rel1maps) + rel1maps_res
         rel1maps_self = self.attention(k1_vert, q1_vert, rel1maps)
         maps = self.decoderLayer1(torch.cat((maps, ral1maps_cross, ral1maps_self, rel1maps_cross, rel1maps_self), 1)) 
-        gcn_output = self.gcn(maps)
+        gcn_output = self.gcn(maps, video_id)
         return maps, gcn_output
 
 class Encoder3D(nn.Module):

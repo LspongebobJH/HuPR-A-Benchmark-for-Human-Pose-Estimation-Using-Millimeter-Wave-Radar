@@ -33,11 +33,11 @@ def convert_gt(gt):
     gt2d, _ = get_max_preds(heatmaps.detach().cpu().numpy())
     return gt2d
 
-def plotHumanPose(batch_joints, cfg, visDir, imageIdx, bbox=None, upsamplingSize=(256, 256), nrow=8, padding=2):
+def plotHumanPose(batch_joints, cfg, visdir, imageIdx, bbox=None, upsamplingSize=(256, 256), nrow=8, padding=2):
     # codes adopted from misc/plot.py
     for j in range(len(batch_joints)):
         namestr = '%09d'%imageIdx[j].item()
-        imageDir = os.path.join(visDir, 'single_%d'%int(namestr[:4]))
+        imageDir = os.path.join(visdir, 'single_%d'%int(namestr[:4]))
         if not os.path.isdir(imageDir):
             os.mkdir(imageDir)
         imagePath = os.path.join(imageDir, '%09d_gt.png'%int(namestr[-4:]))
@@ -125,7 +125,7 @@ if __name__ == '__main__':
         imageId = batch['imageId']
         bbox = batch['bbox']
         gt = convert_gt(keypoints)
-        plotHumanPose(gt * imgHeatmapRatio, cfg, visDir='./visualization/', imageIdx=imageId, bbox=bbox)
+        plotHumanPose(gt * imgHeatmapRatio, cfg, visdir='./visualization/', imageIdx=imageId, bbox=bbox)
 
     
 

@@ -11,10 +11,10 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 from torchvision.utils import save_image, make_grid
 
-def plotHumanPose(batch_joints, cfg, visDir, imageIdx, bbox=None, upsamplingSize=(256, 256), nrow=8, padding=2):
+def plotHumanPose(batch_joints, cfg, visdir, imageIdx, bbox=None, upsamplingSize=(256, 256), nrow=8, padding=2):
     for j in range(len(batch_joints)):
         namestr = '%09d'%imageIdx[j].item()
-        imageDir = os.path.join(visDir, 'single_%d'%int(namestr[:4]))
+        imageDir = os.path.join(visdir, 'single_%d'%int(namestr[:4]))
         if not os.path.isdir(imageDir):
             os.mkdir(imageDir)
         imagePath = os.path.join(imageDir, '%09d.png'%int(namestr[-4:]))

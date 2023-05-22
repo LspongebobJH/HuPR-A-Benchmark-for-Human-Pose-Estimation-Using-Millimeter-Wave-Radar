@@ -51,10 +51,10 @@ class Runner(BaseRunner):
                 self.logger.display(loss, loss2, keypoints.size(0), epoch)
                 if visualization:
                     plotHumanPose(preds*self.imgHeatmapRatio, self.cfg, 
-                                  self.visDir, imageId, None)
+                                  self.visdir, imageId, None)
                     # # for drawing GT
                     # plotHumanPose(gts*self.imgHeatmapRatio, self.cfg, 
-                    #               self.visDir, imageId, None)
+                    #               self.visdir, imageId, None)
 
             self.saveKeypoints(savePreds, preds*self.imgHeatmapRatio, bbox, imageId)
             loss_list.append(loss.item())
@@ -75,7 +75,8 @@ class Runner(BaseRunner):
                 bbox = batch['bbox']
                 VRDAEmaps_hori = batch['VRDAEmap_hori'].float().to(self.device)
                 VRDAEmaps_vert = batch['VRDAEmap_vert'].float().to(self.device)
-                preds = self.model(VRDAEmaps_hori, VRDAEmaps_vert)
+                video_id = batch['video_id']
+                preds = self.model(VRDAEmaps_hori, VRDAEmaps_vert, video_id)
                 loss, loss2, _, _ = self.lossComputer.computeLoss(preds, keypoints)
                 loss.backward()
                 self.optimizer.step()                    

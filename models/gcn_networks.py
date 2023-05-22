@@ -5,6 +5,7 @@ import torch.nn.functional as F
 
 from torch_geometric_temporal import TGCN
 from torch_geometric.utils import dense_to_sparse
+from torch_geometric.nn import GCNConv, ChebConv, GATConv
 
 class GCN_layers(nn.Module):
     def __init__(self, in_features, out_features, numKeypoints, bias=True):
@@ -60,7 +61,7 @@ class PRGCN(nn.Module):
         keypoints = self.L3(x3, self.A)
         return keypoints.permute(0, 2, 1)
 
-    def forward(self, x):
+    def forward(self, x, *args):
         nodeFeat = self.generate_node_feature(x) # node features have been sequeezed into 1d vector
         heatmap = self.gcn_forward(nodeFeat).reshape(-1, self.numKeypoints, (self.height//2), (self.width//2))
         heatmap = F.interpolate(heatmap, scale_factor=2.0, mode='bilinear', align_corners=True)
@@ -82,27 +83,50 @@ class TempPRGCN(nn.Module):
 
         self.layers = nn.ModuleList()
         for _ in range(self.n_layers):
-            self.layers.append(GCN_layers(self.featureSize, self.featureSize, self.numKeypoints))
+            # self.layers.append(GCN_layers(self.featureSize, self.featureSize, self.numKeypoints))
+            self.layers.append(GCNConv(self.featureSize, self.featureSize))
 
         self.temp = TGCN(self.featureSize, self.featureSize)
+        self.temp_back = TGCN(self.featureSize, self.featureSize)
 
     def generate_node_feature(self, x):
         x = F.interpolate(x, scale_factor=0.5, mode='bilinear', align_corners=True)
-        x = x.reshape(-1, self.numKeypoints, self.featureSize).permute(0, 2, 1)
+        x = x.reshape(self.numGroupFrames, self.numKeypoints, self.featureSize)
         return x
 
-    def forward(self, x):
-        feat = self.generate_node_feature(x)
+    def forward(self, feat, video_id):
+        feat = self.generate_node_feature(feat)
         for layer in self.layers:
             feat = self.relu(layer(feat, self.A))
-        H = None
+        
+        prev_idx = -1
         H_list = []
-        for frame_feat in feat:
+        for frame_feat, idx in zip(feat, video_id):
+            if prev_idx != idx: 
+                # the current idx and the previous idx are not the same, 
+                # or there's no previous idx
+                # then initialize the hidden state to None 
+                H = None
+            prev_idx = idx
             H = self.temp(frame_feat, self.A, H=H)
             H_list.append(H)
-        feat = torch.stack(H_list, dim=0)
-        feat = feat.mean(dim=0).reshape(-1, self.numKeypoints, (self.height//2), (self.width//2))
-        return torch.sigmoid(feat).unsqueeze(1)
+        H_list = torch.stack(H_list, dim=0)
+
+        post_idx = -1
+        H_back_list  = []
+        for frame_feat, idx in zip(torch.flip(feat, dims=(0,)), video_id[::-1]):
+            if post_idx != idx:
+                H_back = None
+            post_idx = idx
+            H_back = self.temp_back(frame_feat, self.A, H=H_back)
+            H_back_list.append(H_back)
+        H_back_list.reverse()
+        H_back_list = torch.stack(H_back_list, dim=0)
+
+        H_list = H_list + H_back_list
+        H_list = H_list.reshape(-1, self.numKeypoints, (self.height//2), (self.width//2))
+        H_list = F.interpolate(H_list, scale_factor=2.0, mode='bilinear', align_corners=True)
+        return torch.sigmoid(H_list).unsqueeze(1)
         
         
     

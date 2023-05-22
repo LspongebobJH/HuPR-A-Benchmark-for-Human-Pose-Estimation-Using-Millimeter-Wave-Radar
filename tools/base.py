@@ -16,7 +16,7 @@ class BaseRunner():
         torch.manual_seed(args.seed)
         torch.cuda.manual_seed_all(args.seed)
         self.dir = './logs/' + args.logdir
-        self.visDir = './visualization/' + args.visDir
+        self.visdir = './visualization/' + args.visdir
         self.args = args
         self.cfg = cfg
         self.heatmapSize = self.width = self.height = self.cfg.DATASET.heatmapSize
@@ -35,8 +35,8 @@ class BaseRunner():
         self.logger = Logger()
         if not os.path.isdir(self.dir):
             os.mkdir(self.dir)
-        if not os.path.isdir(self.visDir):
-            os.mkdir(self.visDir)
+        if not os.path.isdir(self.visdir):
+            os.mkdir(self.visdir)
         if not self.args.eval:
             print('==========>Train set size:', len(self.trainLoader))
         print('==========>Test set size:', len(self.testLoader))

@@ -13,6 +13,7 @@ from datasets.base import BaseDataset, generateGTAnnot
 
 import re
 from torch.utils.data import default_collate
+import pickle
 
 def getDataset(phase, cfg, args, random=True):
     return HuPR3D_horivert(phase, cfg, args, random)
@@ -47,7 +48,12 @@ class HuPR3D_horivert(BaseDataset):
             namestr = '%09d' % name
             self.VRDAEPaths_hori.append(os.path.join(self.dirRoot, 'single_%d/hori/%09d.npy'%(int(namestr[:4]), int(namestr[-4:]))))
             self.VRDAEPaths_vert.append(os.path.join(self.dirRoot, 'single_%d/vert/%09d.npy'%(int(namestr[:4]), int(namestr[-4:]))))
-        self.annots = self._load_coco_keypoint_annotations()
+        if not os.path.exists(os.path.join(self.dirRoot, '%s_coco_annot.pkl' % phase)):
+            print('Generating %s_coco_annot.pkl' % phase)
+            self.annots = self._load_coco_keypoint_annotations()
+        else:
+            with open(os.path.join(self.dirRoot, '%s_coco_annot.pkl' % phase), 'rb') as f:
+                self.annots = pickle.load(f)
         self.transformFunc = self.getTransformFunc(cfg)
 
     def evaluateEach(self, loadDir):
@@ -97,6 +103,8 @@ class HuPR3D_horivert(BaseDataset):
         gt_db = []
         for index in self.imageIds:
             gt_db.extend(self._load_coco_keypoint_annotation_kernal(index))
+        with open(os.path.join(self.dirRoot, '%s_coco_annot.pkl' % self.phase), 'wb') as f:
+            pickle.dump(gt_db, f)
         return gt_db
 
     def _load_coco_keypoint_annotation_kernal(self, index):
@@ -176,5 +184,9 @@ class HuPR3D_horivert(BaseDataset):
 def collate_fn(data_list):
     frames_list = [_data.pop('frames') for _data in data_list]
     frames_list = torch.stack(frames_list, dim=0)
-    default_collate(data_list)
+    data_list = default_collate(data_list)
+    image_id = data_list['imageId']
+    video_id = [int(('%09d'%term)[:4]) for term in image_id]
+    data_list['video_id'] = video_id
+    
     return data_list, frames_list

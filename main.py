@@ -19,7 +19,7 @@ if __name__ == "__main__":
                         help='random seed (default: 0)')
     parser.add_argument('--logdir', type=str, default='', metavar='B',
                         help='directory of saving/loading')
-    parser.add_argument('--visDir', type=str, default='', metavar='B',
+    parser.add_argument('--visdir', type=str, default='', metavar='B',
                         help='directory of visualization')
     parser.add_argument('--config', type=str, default='mscsa_prgcn.yaml', metavar='B',
                         help='directory of configuration')
@@ -32,7 +32,7 @@ if __name__ == "__main__":
         cfg = yaml.safe_load(f)
         cfg = obj(cfg)
     trigger = Runner(args, cfg)
-    vis = False if args.visDir == 'none' else True
+    vis = False if args.visdir == 'none' else True
     if args.eval:
         trigger.loadModelWeight('model_best')
         trigger.eval(visualization=vis)
