@@ -260,10 +260,10 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('--index', type=int)
     parser.add_argument('--vis', default=False, action='store_true')
-    args = parser.parse_args()
-    index = args.index
+     = parser.parse_args()
+    index = .index
     
-    visualization = args.vis
+    visualization = .vis
     radarObject = RadarObject(index)
     if not visualization:
         radarObject.processRadarDataHoriVert()

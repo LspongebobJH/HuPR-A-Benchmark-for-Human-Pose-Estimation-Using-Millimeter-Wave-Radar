@@ -2,40 +2,49 @@ import yaml
 import argparse
 from tools import Runner
 from collections import namedtuple
+from argparse import Namespace
 
+import ray
+from ray.air import session, Checkpoint, CheckpointConfig
+from ray import train
+import ray.train.torch as rt
+from ray.air.config import ScalingConfig, RunConfig
+from ray.train.torch import TorchTrainer
+from ray.air.integrations.wandb import setup_wandb
 
-class obj(object):
-    def __init__(self, d):
-        for a, b in d.items():
-            if isinstance(b, (list, tuple)):
-               setattr(self, a, [obj(x) if isinstance(x, dict) else x for x in b])
-            else:
-               setattr(self, a, obj(b) if isinstance(b, dict) else b)
+import wandb
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--seed', type=int, default=0, metavar='S',
-                        help='random seed (default: 0)')
-    parser.add_argument('--logdir', type=str, default='', metavar='B',
-                        help='directory of saving/loading')
-    parser.add_argument('--visdir', type=str, default='', metavar='B',
-                        help='directory of visualization')
-    parser.add_argument('--config', type=str, default='mscsa_prgcn.yaml', metavar='B',
-                        help='directory of configuration')
-    parser.add_argument('--gpuIDs', default=[0], type=eval, help='IDs of GPUs to use')                        
-    parser.add_argument('--eval', action="store_true")
-    parser.add_argument('-sr', '--sampling_ratio', type=int, default=1, help='sampling ratio for training/test (default: 1)')
-    parser.add_argument('--keypoints', action='store_true', help='print out the APs of all keypoints')
-    args = parser.parse_args()
-    with open('./config/' + args.config, 'r') as f:
-        cfg = yaml.safe_load(f)
-        cfg = obj(cfg)
-    trigger = Runner(args, cfg)
-    vis = False if args.visdir == 'none' else True
-    if args.eval:
+@hydra.main(config_path="config/", config_name="mscsa_prgcn.yaml")
+def main(cfg):
+    ray.init()
+    trigger = Runner(cfg)
+    vis = False if cfg.RUN.visdir == 'none' else True
+    if cfg.RUN.test:
         trigger.loadModelWeight('model_best')
-        trigger.eval(visualization=vis)
+        trigger.test(visualization=vis)
     else:
-        trigger.loadModelWeight('checkpoint')
-        trigger.train()
+        if cfg.RUN.train_load_checkpoint:
+            trigger.loadModelWeight('checkpoint')
+        if not cfg.RUN.use_ray:
+            trigger.main()
+        else:
+            scaling_config = ScalingConfig(
+                trainer_resources={'CPU': 16, 'GPU': 1}, use_gpu=True, 
+                num_workers=cfg.RUN.num_ray_workers, resources_per_worker={'CPU': 4, 'GPU': 1}
+            )
+            run_config = RunConfig(
+                name=cfg.RUN.project, local_dir='./logs', log_to_file="output.log", verbose=0,
+                checkpoint_config=CheckpointConfig(num_to_keep=2, checkpoint_score_attribute='ap', checkpoint_score_order='max')
+            )
+            trainer = TorchTrainer(
+                train_loop_per_worker=trigger.main,
+                scaling_config=scaling_config,
+                run_config=run_config
+            )
+            results = trainer.fit()
+            print(f"Last results {results.metrics}")
+if __name__ == "__main__":
+    main()
+    

@@ -91,7 +91,7 @@ class TempPRGCN(nn.Module):
 
     def generate_node_feature(self, x):
         x = F.interpolate(x, scale_factor=0.5, mode='bilinear', align_corners=True)
-        x = x.reshape(self.numGroupFrames, self.numKeypoints, self.featureSize)
+        x = x.reshape(-1, self.numKeypoints, self.featureSize)
         return x
 
     def forward(self, feat, video_id):

@@ -1,3 +1,27 @@
+defaults:  
+    - _self_  
+    - override hydra/hydra_logging: disabled  
+    - override hydra/job_logging: disabled  
+  
+hydra:
+    job:
+        chdir: False
+    output_subdir: null
+
+RUN:
+    seed: 0
+    logdir: test
+    visdir: test
+    gpu: 0
+    test: False
+    sampling_ratio: 1
+    keypoints: False
+    train_load_checkpoint: False
+    use_ray: False
+    project: test
+    num_ray_workers: 0
+    debug: False
+
 DATASET:
     upsamplingFactor: 4 # from heatmaps (64 x 64) to RGB (256 x 256)
     duration: 600 
@@ -15,8 +39,9 @@ DATASET:
                17, 39,  244, 245, 246, 249, 250, 251, 252, 253, 254,
                247, 248, 255, 256]
     valName: [1, 14, 34, 57, 65,  98,
-              56, 99, 159, 178,
-              101, 120, 137, 156, 161, 164, 181, 194, 197, 205, 257]
+              56, 99, 159, 178, 101, 120, 
+              137, 156, 161, 164, 181, 
+              194, 197, 205, 257]
     trainName: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 18, 19, 20, 21, 
                 22, 23, 24, 25, 26, 27, 28, 29, 30, 33, 35, 36, 37, 43, 
                 44, 45, 46, 47, 48, 49, 50, 51, 52, 58, 59, 60, 61, 62, 
@@ -41,11 +66,11 @@ DATASET:
 MODEL:
     numFilters: 32
     n_layers: 3
-    model: "TempPRGCN" # or "PRGCN" # TODO: test
+    model: "TempPRGCN" # or "PRGCN"
     # model: "PRGCN"
 TRAINING:
     # batchSize: 20
-    batchSize: 8 # TODO: test
+    batchSize: 10
     epochs: 200
     lr: 0.0001
     warmupEpoch: -1
@@ -58,5 +83,4 @@ TEST:
     batchSize: 32
     plotImgDir: ''
 SETUP:
-    numWorkers: 0 # TODO: test
-    # numWorkers: 4
+    numWorkers: 4

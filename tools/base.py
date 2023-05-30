@@ -8,16 +8,16 @@ from misc.logger import Logger
 import torch.utils.data as data
 import torch.nn.functional as F
 from misc.losses import LossComputer
+import ray.train.torch as rt
 
 class BaseRunner():
-    def __init__(self, args, cfg):
-        self.device = 'cuda' if torch.cuda.is_available() and args.gpuIDs else 'cpu'
-        np.random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        torch.cuda.manual_seed_all(args.seed)
-        self.dir = './logs/' + args.logdir
-        self.visdir = './visualization/' + args.visdir
-        self.args = args
+    def __init__(self, cfg):
+        self.device = f'cuda:{cfg.RUN.gpu}' if torch.cuda.is_available() else 'cpu'
+        np.random.seed(cfg.RUN.seed)
+        torch.manual_seed(cfg.RUN.seed)
+        torch.cuda.manual_seed_all(cfg.RUN.seed)
+        self.dir = './logs/' + cfg.RUN.logdir
+        self.visdir = './visualization/' + cfg.RUN.visdir
         self.cfg = cfg
         self.heatmapSize = self.width = self.height = self.cfg.DATASET.heatmapSize
         self.imgSize = self.imgWidth = self.imgHeight = self.cfg.DATASET.imgSize
@@ -37,8 +37,9 @@ class BaseRunner():
             os.mkdir(self.dir)
         if not os.path.isdir(self.visdir):
             os.mkdir(self.visdir)
-        if not self.args.eval:
+        if not self.cfg.RUN.test:
             print('==========>Train set size:', len(self.trainLoader))
+            print('==========>Eval set size:', len(self.evalLoader))
         print('==========>Test set size:', len(self.testLoader))
   
         if self.cfg.TRAINING.optimizer == 'sgd':
@@ -72,14 +73,14 @@ class BaseRunner():
                 param_group['lr'] *= self.cfg.TRAINING.lrDecay
 
 
-    def saveModelWeight(self, epoch, acc):
+    def saveModelWeight(self, epoch, ap):
         saveGroup = {
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'accuracy': self.logger.showBestAP(),
         }
-        if self.logger.isBestAccAP(acc):
+        if self.logger.isBestAccAP(ap):
             saveGroup['accuracy'] = self.logger.showBestAP()
             print('==========>Save the best model...')
             torch.save(saveGroup, os.path.join(self.dir, 'model_best.pth'))
@@ -108,8 +109,8 @@ class BaseRunner():
         if os.path.isdir(self.dir) and os.path.exists(checkpoint):
             checkpoint = torch.load(checkpoint)
             self.model.load_state_dict(checkpoint['model_state_dict'])
-            if not self.args.eval:
-                if not self.args.pretrained: #self.args.pretrained_encoder:
+            if not self.cfg.RUN.eval:
+                if not self.cfg.RUN.pretrained: #self.cfg.RUN.pretrained_encoder:
                     print('==========>Load the previous optimizer')
                     self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                     self.start_epoch = checkpoint['epoch']
@@ -147,7 +148,7 @@ class BaseRunner():
         return savePreds
 
     def writeKeypoints(self, preds):
-        predFile = os.path.join(self.dir, "test_results.json" if self.args.eval else "val_results.json")
+        predFile = os.path.join(self.dir, "test_results.json" if self.cfg.RUN.eval else "val_results.json")
         with open(predFile, 'w') as fp:
             json.dump(preds, fp)
 

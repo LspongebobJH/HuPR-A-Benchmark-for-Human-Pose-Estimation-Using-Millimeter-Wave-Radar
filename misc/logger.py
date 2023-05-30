@@ -20,9 +20,9 @@ class Logger():
     def showBestAP(self):
         return self.bestAP
     
-    def isBestAccAP(self, acc):
-        if acc > self.bestAP or self.bestAP == -1:
-            self.bestAP = acc
+    def isBestAccAP(self, ap):
+        if ap > self.bestAP or self.bestAP == -1:
+            self.bestAP = ap
             return True
         else:
             return False
