@@ -20,10 +20,15 @@ import pickle
 import omegaconf
 import numpy as np
 
-
 class Runner(BaseRunner):
     def __init__(self, cfg):
         super(Runner, self).__init__(cfg)    
+        
+        if cfg.RUN.debug:
+            cfg.TRAINING.epochs = 2
+            cfg.SETUP.numWorkers = 0
+            cfg.RUN.logdir = cfg.RUN.visdir = 'test'
+
         if not cfg.RUN.test:
             self.trainSet = getDataset('train', cfg)
             self.trainLoader = data.DataLoader(self.trainSet,
@@ -50,11 +55,6 @@ class Runner(BaseRunner):
         LR = self.cfg.TRAINING.lr if self.cfg.TRAINING.warmupEpoch == -1 else self.cfg.TRAINING.lr / (self.cfg.TRAINING.warmupGrowth ** self.stepSize)
         self.initialize(LR)
         self.beta = 0.0
-
-        if cfg.RUN.debug:
-            cfg.TRAINING.epochs = 2
-            cfg.SETUP.numWorkers = 0
-            cfg.RUN.logdir = cfg.RUN.visdir = 'test'
     
     def eval(self, dataSet, dataLoader, visualization=True, epoch=-1):
         self.model.eval()
@@ -109,7 +109,7 @@ class Runner(BaseRunner):
                   self.adjustLR(epoch)
                 loss_list.append(loss.item())
             ap = self.eval(self.evalSet, self.evalLoader, visualization=False, epoch=epoch)
-
+            # TODO: loss2?
             self.run.log({
                 'train/loss_mean': np.mean(loss_list), 'eval/ap': ap
             })
@@ -135,7 +135,6 @@ class Runner(BaseRunner):
                 self.saveLosslist(epoch, loss_list, 'train')
 
     def main(self):
-        print("a test hi!") # TODO: test
         wandb_cfg = omegaconf.OmegaConf.to_container(self.cfg, resolve=True, throw_on_missing=True)
         
         if self.cfg.RUN.use_ray:
@@ -146,7 +145,6 @@ class Runner(BaseRunner):
         else:
             self.model = self.model.to(self.device)
             run = wandb.init(config=wandb_cfg, project=self.cfg.RUN.project, dir='/mnt/jiahanli/wandb')
-        print(2) # TODO: test
         run.define_metric("epoch")
         run.define_metric("train/*", step_metric="epoch")
         run.define_metric("eval/*", step_metric="epoch")

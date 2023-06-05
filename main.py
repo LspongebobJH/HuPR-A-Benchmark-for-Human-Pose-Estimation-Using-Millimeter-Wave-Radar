@@ -18,7 +18,6 @@ from omegaconf import DictConfig, OmegaConf
 
 @hydra.main(config_path="config/", config_name="mscsa_prgcn.yaml")
 def main(cfg):
-    ray.init()
     trigger = Runner(cfg)
     vis = False if cfg.RUN.visdir == 'none' else True
     if cfg.RUN.test:
@@ -30,6 +29,7 @@ def main(cfg):
         if not cfg.RUN.use_ray:
             trigger.main()
         else:
+            ray.init()
             scaling_config = ScalingConfig(
                 trainer_resources={'CPU': 16, 'GPU': 1}, use_gpu=True, 
                 num_workers=cfg.RUN.num_ray_workers, resources_per_worker={'CPU': 4, 'GPU': 1}
