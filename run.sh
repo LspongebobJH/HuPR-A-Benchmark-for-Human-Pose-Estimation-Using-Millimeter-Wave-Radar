@@ -16,5 +16,5 @@
 # python main.py --config mscsa_prgcn.yaml --eval
 
 # python gen_gt.py
-python main.py RUN.debug=True RUN.use_ray=False cfg.SETUP.numWorkers=8
+python main.py RUN.debug=True RUN.use_ray=False cfg.SETUP.numWorkers=4
 
