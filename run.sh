@@ -1,10 +1,10 @@
 #!/bin/bash
 
-for ((i=11; i<=14; i++)); do
-    python preprocessing/process_iwr1843.py --index $i &
-done
+# for ((i=11; i<=14; i++)); do
+#     python preprocessing/process_iwr1843.py --index $i &
+# done
 
-# python preprocessing/process_iwr1843.py --index 1 &
+python preprocessing/process_iwr1843.py --index_single 5 --frame 395 &
 # python preprocessing/process_iwr1843.py --index 2 &
 # python preprocessing/process_iwr1843.py --index 3 &
 # python preprocessing/process_iwr1843.py --index 4 &

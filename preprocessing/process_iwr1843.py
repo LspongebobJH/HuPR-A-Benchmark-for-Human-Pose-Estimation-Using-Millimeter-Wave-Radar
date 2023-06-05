@@ -8,8 +8,10 @@ from argparse import ArgumentParser
 from tqdm import tqdm
 
 class RadarObject():
-    def __init__(self, index):
+    def __init__(self, index, index_single, frame):
         self.index = index
+        self.index_single = index_single
+        self.frame = frame
 
         numGroup = 276
         self.root = 'HuPR'
@@ -39,36 +41,39 @@ class RadarObject():
 
     def initialize(self, numGroup):
         # train
-        if self.index == 1:
-            _list = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 18, 19, 20, 21, 22, 23, 24, 25, 26]
-        elif self.index == 2:
-            _list = [84, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 31, 32, 53, 54, 55, 67]
-        elif self.index == 3:
-            _list = [102, 103, 104, 105, 106, 107, 108, 109, 110, 119, 121, 122, 123, 124, 133, 134, 135]
-        elif self.index == 4:
-            _list = [199, 200, 201, 202, 203, 204, 206, 207, 208, 209, 210, 211, 212, 213, 215, 216, 223, 224]
-        elif self.index == 5:
-            _list = [63, 64, 66, 71, 73, 74, 75, 76, 77, 78, 79, 80, 81, 83, 28, 229, 230, 259]
-        elif self.index == 6:
-            _list = [44, 45, 46, 47, 48, 49, 50, 51, 52, 58, 59, 60, 61, 62, 27, 28, 29, 30, 33, 35, 36, 37, 43]
-        elif self.index == 7:
-            _list = [160, 167, 168, 169, 170, 177, 179, 180, 187, 188, 189, 190, 68, 69, 70, 72, 85, 86, 100, 157, 158]
-        elif self.index == 8:
-            _list = [153, 154, 155, 162, 163, 165, 166, 171, 172, 173, 174, 175, 138, 147, 148, 149, 150, 151, 152]
-        elif self.index == 9:
-            _list = [235, 236, 258, 261, 262, 265, 266, 267, 268, 271, 272, 275, 276, 225, 226, 231, 232, 233, 234]
-        elif self.index == 10:
-            _list = [176, 182, 183, 184, 185, 186, 191, 192, 193, 195, 196, 198, 260, 263, 264, 269, 270, 273, 274]
+        if self.index != -1:
+            if self.index == 1:
+                _list = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+            elif self.index == 2:
+                _list = [84, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 31, 32, 53, 54, 55, 67]
+            elif self.index == 3:
+                _list = [102, 103, 104, 105, 106, 107, 108, 109, 110, 119, 121, 122, 123, 124, 133, 134, 135]
+            elif self.index == 4:
+                _list = [199, 200, 201, 202, 203, 204, 206, 207, 208, 209, 210, 211, 212, 213, 215, 216, 223, 224]
+            elif self.index == 5:
+                _list = [63, 64, 66, 71, 73, 74, 75, 76, 77, 78, 79, 80, 81, 83, 28, 229, 230, 259]
+            elif self.index == 6:
+                _list = [44, 45, 46, 47, 48, 49, 50, 51, 52, 58, 59, 60, 61, 62, 27, 28, 29, 30, 33, 35, 36, 37, 43]
+            elif self.index == 7:
+                _list = [160, 167, 168, 169, 170, 177, 179, 180, 187, 188, 189, 190, 68, 69, 70, 72, 85, 86, 100, 157, 158]
+            elif self.index == 8:
+                _list = [153, 154, 155, 162, 163, 165, 166, 171, 172, 173, 174, 175, 138, 147, 148, 149, 150, 151, 152]
+            elif self.index == 9:
+                _list = [235, 236, 258, 261, 262, 265, 266, 267, 268, 271, 272, 275, 276, 225, 226, 231, 232, 233, 234]
+            elif self.index == 10:
+                _list = [176, 182, 183, 184, 185, 186, 191, 192, 193, 195, 196, 198, 260, 263, 264, 269, 270, 273, 274]
 
-        # validation
-        elif self.index == 11:
-            _list = [1, 14, 34, 57, 65, 98]
-        elif self.index == 12:
-            _list = [56, 99, 159, 178, 101, 120]
-        elif self.index == 13:
-            _list = [137, 156, 161, 164, 181]
-        elif self.index == 14:
-            _list = [194, 197, 205, 257]
+            # validation
+            elif self.index == 11:
+                _list = [1, 14, 34, 57, 65, 98]
+            elif self.index == 12:
+                _list = [56, 99, 159, 178, 101, 120]
+            elif self.index == 13:
+                _list = [137, 156, 161, 164, 181]
+            elif self.index == 14:
+                _list = [194, 197, 205, 257]
+        else:
+            _list = [self.index_single]
 
         self._list = _list
             
@@ -225,19 +230,33 @@ class RadarObject():
         for idxName in range(len(self.radarDataFileNameGroup)):
             adcDataHori = self.getadcDataFromDCA1000(self.radarDataFileNameGroup[idxName][0])
             adcDataVert = self.getadcDataFromDCA1000(self.radarDataFileNameGroup[idxName][1])
-            for idxFrame in range(0,self.numFrame):
-                if not os.path.exists(os.path.join(self.saveDirNameGroup[idxName], 'hori', f'{idxFrame:09d}.npy')):
-                    frameHori = adcDataHori[:, self.numChirp*(idxFrame):self.numChirp*(idxFrame+1), 0:self.numADCSamples]
-                    outputHori = self.generateHeatmap(frameHori)
-                    self.saveRadarData(outputHori, self.saveDirNameGroup[idxName] + '/hori', idxFrame)
-                    print('index:%d, %d/%d, %s, finished frame %d hori' % 
-                      (self.index, idxName, len(self.radarDataFileNameGroup), self.radarDataFileNameGroup[idxName][0], idxFrame), end='\r')
-                if not os.path.exists(os.path.join(self.saveDirNameGroup[idxName], 'vert', f'{idxFrame:09d}.npy')):
-                    frameVert = adcDataVert[:, self.numChirp*(idxFrame):self.numChirp*(idxFrame+1), 0:self.numADCSamples]
-                    outputVert = self.generateHeatmap(frameVert)
-                    self.saveRadarData(outputVert, self.saveDirNameGroup[idxName] + '/vert', idxFrame)
-                    print('index:%d, %d/%d, %s, finished frame %d vert' % 
-                      (self.index, idxName, len(self.radarDataFileNameGroup), self.radarDataFileNameGroup[idxName][0], idxFrame), end='\r')
+            if self.index != -1:
+                for idxFrame in range(0,self.numFrame):
+                    if not os.path.exists(os.path.join(self.saveDirNameGroup[idxName], 'hori', f'{idxFrame:09d}.npy')):
+                        frameHori = adcDataHori[:, self.numChirp*(idxFrame):self.numChirp*(idxFrame+1), 0:self.numADCSamples]
+                        outputHori = self.generateHeatmap(frameHori)
+                        self.saveRadarData(outputHori, self.saveDirNameGroup[idxName] + '/hori', idxFrame)
+                        print('index:%d, %d/%d, %s, finished frame %d hori' % 
+                        (self.index, idxName, len(self.radarDataFileNameGroup), self.radarDataFileNameGroup[idxName][0], idxFrame), end='\r')
+                    if not os.path.exists(os.path.join(self.saveDirNameGroup[idxName], 'vert', f'{idxFrame:09d}.npy')):
+                        frameVert = adcDataVert[:, self.numChirp*(idxFrame):self.numChirp*(idxFrame+1), 0:self.numADCSamples]
+                        outputVert = self.generateHeatmap(frameVert)
+                        self.saveRadarData(outputVert, self.saveDirNameGroup[idxName] + '/vert', idxFrame)
+                        print('index:%d, %d/%d, %s, finished frame %d vert' % 
+                        (self.index, idxName, len(self.radarDataFileNameGroup), self.radarDataFileNameGroup[idxName][0], idxFrame), end='\r')
+            else:
+                frameHori = adcDataHori[:, self.numChirp*(self.frame):self.numChirp*(self.frame+1), 0:self.numADCSamples]
+                outputHori = self.generateHeatmap(frameHori)
+                self.saveRadarData(outputHori, self.saveDirNameGroup[idxName] + '/hori', self.frame)
+                print('index:%d, %d/%d, %s, finished frame %d hori' % 
+                (self.index, idxName, len(self.radarDataFileNameGroup), self.radarDataFileNameGroup[idxName][0], self.frame), end='\r')
+
+                frameVert = adcDataVert[:, self.numChirp*(self.frame):self.numChirp*(self.frame+1), 0:self.numADCSamples]
+                outputVert = self.generateHeatmap(frameVert)
+                self.saveRadarData(outputVert, self.saveDirNameGroup[idxName] + '/vert', self.frame)
+                print('index:%d, %d/%d, %s, finished frame %d vert' % 
+                (self.index, idxName, len(self.radarDataFileNameGroup), self.radarDataFileNameGroup[idxName][0], self.frame), end='\r')
+
                     
     def loadDataPlot(self):
         for idxName in [0, 1, 2, 3]:
@@ -258,13 +277,19 @@ class RadarObject():
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument('--index', type=int)
+    parser.add_argument('--index', type=int, default=-1)
+    parser.add_argument('--index_single', type=int, default=-1)
+    parser.add_argument('--frame', type=int, default=-1)
     parser.add_argument('--vis', default=False, action='store_true')
-     = parser.parse_args()
-    index = .index
+
+    args = parser.parse_args()
+    assert (args.index == -1 and args.index_single != -1 ) or (args.index != -1 and args.index_single == -1)
+    index = args.index
+    index_single = args.index_single
+    frame = args.frame
     
-    visualization = .vis
-    radarObject = RadarObject(index)
+    visualization = args.vis
+    radarObject = RadarObject(index, index_single, frame)
     if not visualization:
         radarObject.processRadarDataHoriVert()
     else:
