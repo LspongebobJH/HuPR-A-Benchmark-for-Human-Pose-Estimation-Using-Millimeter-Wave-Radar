@@ -26,7 +26,6 @@ class Runner(BaseRunner):
         
         if cfg.RUN.debug:
             cfg.TRAINING.epochs = 2
-            cfg.SETUP.numWorkers = 0
             cfg.RUN.logdir = cfg.RUN.visdir = 'test'
 
         if not cfg.RUN.test:
