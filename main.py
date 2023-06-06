@@ -31,8 +31,8 @@ def main(cfg):
         else:
             ray.init()
             scaling_config = ScalingConfig(
-                trainer_resources={'CPU': 16, 'GPU': 1}, use_gpu=True, 
-                num_workers=cfg.RUN.num_ray_workers, resources_per_worker={'CPU': 4, 'GPU': 1}
+                trainer_resources={'CPU': 96, 'GPU': 8}, use_gpu=True, 
+                num_workers=cfg.RUN.num_ray_workers, resources_per_worker={'CPU': 8, 'GPU': 1}
             )
             run_config = RunConfig(
                 name=cfg.RUN.project, local_dir='./logs', log_to_file="output.log", verbose=0,
