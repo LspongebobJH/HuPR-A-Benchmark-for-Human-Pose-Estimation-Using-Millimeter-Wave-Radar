@@ -29,7 +29,8 @@ def main(cfg):
         if not cfg.RUN.use_ray:
             trigger.main()
         else:
-            ray.init()
+            context = ray.init()
+            print(context.dashboard_url)
             scaling_config = ScalingConfig(
                 trainer_resources={'CPU': 96, 'GPU': 8}, use_gpu=True, 
                 num_workers=cfg.RUN.num_ray_workers, resources_per_worker={'CPU': 8, 'GPU': 1}
