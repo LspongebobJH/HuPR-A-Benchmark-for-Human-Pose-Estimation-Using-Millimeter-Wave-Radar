@@ -18,5 +18,5 @@
 # python gen_gt.py
 HYDRA_FULL_ERROR=1
 
-python main.py RUN.use_ray=True SETUP.numWorkers=4 TRAINING.epochs=30 RUN.num_ray_workers=8
+python main.py RUN.use_ray=True SETUP.numWorkers=4 TRAINING.epochs=30 RUN.num_ray_workers=4
 
