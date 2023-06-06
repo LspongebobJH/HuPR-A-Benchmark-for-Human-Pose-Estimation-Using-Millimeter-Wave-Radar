@@ -156,8 +156,18 @@ class HuPR3D_horivert(BaseDataset):
             frame_idx = re.search(r'\d+', VRDAEPath_hori).group()
             frames.append(int(frame_idx))
             
-            VRDAERealImag_hori = np.load(VRDAEPath_hori)
-            VRDAERealImag_vert = np.load(VRDAEPath_vert)
+            try:
+                VRDAERealImag_hori = np.load(VRDAEPath_hori)
+            except:
+                print(VRDAEPath_hori)
+                print('error')
+                exit()
+            try:
+                VRDAERealImag_vert = np.load(VRDAEPath_vert)
+            except:
+                print(VRDAEPath_vert)
+                print('error')
+                exit()
 
             idxSampleChirps = 0
             for idxChirps in range(self.numChirps//2 - self.numFrames//2, self.numChirps//2 + self.numFrames//2):

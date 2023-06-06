@@ -10,15 +10,15 @@ hydra:
 
 RUN:
     seed: 0
-    logdir: test
-    visdir: test
+    project: test
+    logdir: ${RUN.project}
+    visdir: ${RUN.project}
     gpu: 0
     test: False
     sampling_ratio: 1
     keypoints: False
     train_load_checkpoint: False
     use_ray: False
-    project: test
     num_ray_workers: 0
     debug: False
 
@@ -83,4 +83,4 @@ TEST:
     batchSize: 32
     plotImgDir: ''
 SETUP:
-    numWorkers: 4
+    numWorkers: 0

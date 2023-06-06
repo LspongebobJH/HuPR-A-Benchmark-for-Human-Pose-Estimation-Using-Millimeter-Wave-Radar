@@ -90,6 +90,7 @@ class Runner(BaseRunner):
         for epoch in range(self.start_epoch, self.cfg.TRAINING.epochs):
             self.model.train()
             loss_list = []
+            loss2_list = []
             self.logger.clear(len(self.trainLoader.dataset))
             for idxBatch, (batch, frames_list) in enumerate(self.trainLoader):
                 self.optimizer.zero_grad()
@@ -107,10 +108,10 @@ class Runner(BaseRunner):
                 if idxBatch % self.cfg.TRAINING.lrDecayIter == 0: #200 == 0:
                   self.adjustLR(epoch)
                 loss_list.append(loss.item())
+                loss2_list.append(loss2.item())
             ap = self.eval(self.evalSet, self.evalLoader, visualization=False, epoch=epoch)
-            # TODO: loss2?
             self.run.log({
-                'train/loss_mean': np.mean(loss_list), 'eval/ap': ap
+                'train/loss_mean': np.mean(loss_list), 'train/gcn_loss_mean': np.mean(loss2_list), 'eval/ap': ap
             })
 
             if self.cfg.RUN.use_ray:
@@ -156,5 +157,6 @@ class Runner(BaseRunner):
         print("=== Start Evaluation on Test Set ===")
         ap = self.eval(self.testSet, self.testLoader, visualization=True, epoch=self.cfg.TRAINING.epochs - 1)
         print("=== End Evaluation on Test Set ===")
+        self.run.log({'test/ap': ap})
         return ap
 
