@@ -23,14 +23,6 @@ import numpy as np
 class Runner(BaseRunner):
     def __init__(self, cfg):
         super(Runner, self).__init__(cfg)    
-        
-        if cfg.RUN.debug:
-            cfg.TRAINING.epochs = 2
-            cfg.RUN.logdir = cfg.RUN.visdir = 'test'
-
-        LR = self.cfg.TRAINING.lr if self.cfg.TRAINING.warmupEpoch == -1 else self.cfg.TRAINING.lr / (self.cfg.TRAINING.warmupGrowth ** self.stepSize)
-        self.initialize(LR)
-        self.beta = 0.0
     
     def eval(self, dataSet, dataLoader, visualization=True, epoch=-1):
         self.model.eval()
@@ -136,7 +128,15 @@ class Runner(BaseRunner):
                               num_workers=self.cfg.SETUP.numWorkers, 
                               collate_fn=collate_fn)
         self.model = HuPRNet(self.cfg)
+        
         self.stepSize = len(self.trainLoader) * self.cfg.TRAINING.warmupEpoch
+        if self.cfg.RUN.debug:
+            self.cfg.TRAINING.epochs = 2
+            self.cfg.RUN.logdir = self.cfg.RUN.visdir = 'test'
+
+        LR = self.cfg.TRAINING.lr if self.cfg.TRAINING.warmupEpoch == -1 else self.cfg.TRAINING.lr / (self.cfg.TRAINING.warmupGrowth ** self.stepSize)
+        self.initialize(LR)
+        self.beta = 0.0
 
         if self.cfg.RUN.use_ray:
             self.model = rt.prepare_model(self.model)
