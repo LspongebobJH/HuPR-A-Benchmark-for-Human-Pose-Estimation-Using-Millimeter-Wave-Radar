@@ -28,28 +28,6 @@ class Runner(BaseRunner):
             cfg.TRAINING.epochs = 2
             cfg.RUN.logdir = cfg.RUN.visdir = 'test'
 
-        if not cfg.RUN.test:
-            self.trainSet = getDataset('train', cfg)
-            self.trainLoader = data.DataLoader(self.trainSet,
-                                  self.cfg.TRAINING.batchSize,
-                                  shuffle=cfg.DATASET.shuffle,
-                                  num_workers=cfg.SETUP.numWorkers,
-                                  collate_fn=collate_fn)
-            self.evalSet = getDataset('val', cfg)
-            self.evalLoader = data.DataLoader(self.evalSet, 
-                                self.cfg.TEST.batchSize,
-                                shuffle=False,
-                                num_workers=cfg.SETUP.numWorkers, 
-                                collate_fn=collate_fn)
-        else:
-            self.trainLoader = [0] # an empty loader
-        self.testSet = getDataset('test', cfg)
-        self.testLoader = data.DataLoader(self.testSet, 
-                              self.cfg.TEST.batchSize,
-                              shuffle=False,
-                              num_workers=cfg.SETUP.numWorkers, 
-                              collate_fn=collate_fn)
-        self.model = HuPRNet(self.cfg)
         self.stepSize = len(self.trainLoader) * self.cfg.TRAINING.warmupEpoch
         LR = self.cfg.TRAINING.lr if self.cfg.TRAINING.warmupEpoch == -1 else self.cfg.TRAINING.lr / (self.cfg.TRAINING.warmupGrowth ** self.stepSize)
         self.initialize(LR)
@@ -137,6 +115,29 @@ class Runner(BaseRunner):
     def main(self):
         wandb_cfg = omegaconf.OmegaConf.to_container(self.cfg, resolve=True, throw_on_missing=True)
         
+        if not self.cfg.RUN.test:
+            self.trainSet = getDataset('train', self.cfg)
+            self.trainLoader = data.DataLoader(self.trainSet,
+                                  self.cfg.TRAINING.batchSize,
+                                  shuffle=self.cfg.DATASET.shuffle,
+                                  num_workers=self.cfg.SETUP.numWorkers,
+                                  collate_fn=collate_fn)
+            self.evalSet = getDataset('val', self.cfg)
+            self.evalLoader = data.DataLoader(self.evalSet, 
+                                self.cfg.TEST.batchSize,
+                                shuffle=False,
+                                num_workers=self.cfg.SETUP.numWorkers, 
+                                collate_fn=collate_fn)
+        else:
+            self.trainLoader = [0] # an empty loader
+        self.testSet = getDataset('test', self.cfg)
+        self.testLoader = data.DataLoader(self.testSet, 
+                              self.cfg.TEST.batchSize,
+                              shuffle=False,
+                              num_workers=self.cfg.SETUP.numWorkers, 
+                              collate_fn=collate_fn)
+        self.model = HuPRNet(self.cfg)
+
         if self.cfg.RUN.use_ray:
             self.model = rt.prepare_model(self.model)
             self.optimizer = rt.prepare_optimizer(self.optimizer)
