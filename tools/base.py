@@ -8,7 +8,6 @@ from misc.logger import Logger
 import torch.utils.data as data
 import torch.nn.functional as F
 from misc.losses import LossComputer
-import ray.train.torch as rt
 
 class BaseRunner():
     def __init__(self, cfg):

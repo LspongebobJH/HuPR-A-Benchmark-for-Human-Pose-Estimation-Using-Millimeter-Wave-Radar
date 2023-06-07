@@ -42,7 +42,7 @@ class LossComputer():
             loss = loss1 + loss2
         pred2d, _ = get_max_preds(preds2.detach().cpu().numpy())
         gt2d, _ = get_max_preds(heatmaps.detach().cpu().numpy())
-        return loss, loss2, pred2d, gt2d
+        return loss, loss1, loss2, pred2d, gt2d
 
     def computeBCESingleFrame(self, preds, gt):
         loss = self.bce(preds, gt.to(self.device))

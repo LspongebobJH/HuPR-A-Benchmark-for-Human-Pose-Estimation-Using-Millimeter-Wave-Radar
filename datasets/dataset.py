@@ -159,12 +159,14 @@ class HuPR3D_horivert(BaseDataset):
             try:
                 VRDAERealImag_hori = np.load(VRDAEPath_hori)
             except:
+                print()
                 print(VRDAEPath_hori)
                 print('error')
                 exit()
             try:
                 VRDAERealImag_vert = np.load(VRDAEPath_vert)
             except:
+                print()
                 print(VRDAEPath_vert)
                 print('error')
                 exit()

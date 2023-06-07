@@ -18,7 +18,7 @@ RUN:
     sampling_ratio: 1
     keypoints: False
     train_load_checkpoint: False
-    use_ray: False
+    use_horovod: False
     num_ray_workers: 0
     debug: False
 
@@ -71,7 +71,8 @@ MODEL:
 TRAINING:
     # batchSize: 20
     batchSize: 12
-    epochs: 200
+    # epochs: 200
+    epochs: 30
     lr: 0.0001
     warmupEpoch: -1
     warmupGrowth: 1.005

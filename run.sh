@@ -16,7 +16,6 @@
 # python main.py --config mscsa_prgcn.yaml --eval
 
 # python gen_gt.py
-HYDRA_FULL_ERROR=1
 
-python main.py RUN.use_ray=True SETUP.numWorkers=4 TRAINING.epochs=30 RUN.num_ray_workers=4
+horovodrun -np 8 -H localhost:8 python main.py RUN.use_horovod=True SETUP.numWorkers=4
 
