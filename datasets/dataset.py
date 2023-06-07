@@ -158,17 +158,17 @@ class HuPR3D_horivert(BaseDataset):
             
             try:
                 VRDAERealImag_hori = np.load(VRDAEPath_hori)
-            except:
+            except Exception as e:
                 print()
                 print(VRDAEPath_hori)
-                print('error')
+                print(e)
                 exit()
             try:
                 VRDAERealImag_vert = np.load(VRDAEPath_vert)
-            except:
+            except Exception as e:
                 print()
                 print(VRDAEPath_vert)
-                print('error')
+                print(e)
                 exit()
 
             idxSampleChirps = 0
