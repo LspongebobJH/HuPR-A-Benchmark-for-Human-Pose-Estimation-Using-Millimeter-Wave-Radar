@@ -58,10 +58,10 @@ class Runner(BaseRunner):
             loss2_list = []
 
             if self.cfg.RUN.use_horovod:
-                self.logger.clear(ceil(len(self.trainLoader) / hvd.local_size()))
+                self.logger.clear(ceil(len(self.trainLoader.dataset) / hvd.local_size()))
                 print(hvd.local_size())
             else:
-                self.logger.clear(len(self.trainLoader))
+                self.logger.clear(len(self.trainLoader.dataset))
 
             for idxBatch, (batch, frames_list) in enumerate(self.trainLoader):
                 self.optimizer.zero_grad()
