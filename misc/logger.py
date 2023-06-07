@@ -1,6 +1,8 @@
 import numpy as np
 from tqdm import tqdm
 
+import horovod.torch as hvd
+
 class Logger():
     def __init__(self):    
         self.bestAP = -1
@@ -8,7 +10,7 @@ class Logger():
         np.set_printoptions(precision=3)
     
     def clear(self, loaderSize):
-        self.progressBar = tqdm(total=loaderSize)
+        self.progressBar = tqdm(total=loaderSize, disable=not (hvd.rank() == 0))
         
     def display(self, loss, loss2, updateSize, epoch):
         if loss2 is not None:

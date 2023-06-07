@@ -59,6 +59,7 @@ class Runner(BaseRunner):
 
             if self.cfg.RUN.use_horovod:
                 self.logger.clear(ceil(len(self.trainLoader) / hvd.local_size()))
+                print(hvd.local_size())
             else:
                 self.logger.clear(len(self.trainLoader))
 
