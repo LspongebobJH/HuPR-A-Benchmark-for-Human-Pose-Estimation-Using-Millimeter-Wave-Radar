@@ -14,6 +14,7 @@ import omegaconf
 import numpy as np
 from math import ceil
 from tqdm import tqdm
+import time
 
 import horovod.torch as hvd
 
@@ -63,6 +64,7 @@ class Runner(BaseRunner):
                 num_batches = ceil(len(self.trainLoader) / hvd.local_size())
 
             for idxBatch, (batch, frames_list) in enumerate(self.trainLoader):
+                time_st = time.time()
                 self.optimizer.zero_grad()
                 keypoints = batch['jointsGroup']
                 bbox = batch['bbox']
@@ -78,9 +80,10 @@ class Runner(BaseRunner):
                     print(f'TRAIN, '
                         f'Epoch: {epoch}/{self.cfg.TRAINING.epochs}, '
                         f'Batch: {idxBatch}/{num_batches}, '
-                        f'Loss: {loss.item()}, '
-                        f'Loss1: {loss1.item()}, '
-                        f'Loss2: {loss2.item()}')
+                        f'Loss: {loss.item():.4f}, '
+                        f'Loss1: {loss1.item():.4f}, '
+                        f'Loss2: {loss2.item():.4f}, '
+                        f'Batch time: {time.time() - time_st:.2f}s')
 
             if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
                 if idxBatch % self.cfg.TRAINING.lrDecayIter == 0: #200 == 0:
@@ -90,10 +93,12 @@ class Runner(BaseRunner):
                 loss1_list.append(loss1.item())
                 loss2_list.append(loss2.item())
 
+                time_st = time.time()
                 ap = self.eval(self.evalSet, self.evalLoader, visualization=False, epoch=epoch)
                 print(f'EVAL, '
                     f'Epoch: {epoch}/{self.cfg.TRAINING.epochs}, '
-                    f'Ap: {ap:.4f}')
+                    f'Ap: {ap:.4f}, '
+                    f'Time: {time.time() - time_st:.2f}s')
                 
                 self.run.log({
                     'train/loss_mean': np.mean(loss_list), 
@@ -175,9 +180,11 @@ class Runner(BaseRunner):
 
         if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
             print("=== Start Evaluation on Test Set ===")
+            time_st = time.time()
             ap = self.eval(self.testSet, self.testLoader, visualization=True, epoch=self.cfg.TRAINING.epochs - 1)
             print("=== End Evaluation on Test Set ===")
             print(f'TEST, '
-                f'Ap: {ap:.4f}')
+                f'Ap: {ap:.4f}, '
+                f'Time: {time.time() - time_st:.2f}s')
             self.run.log({'test/ap': ap})
 
