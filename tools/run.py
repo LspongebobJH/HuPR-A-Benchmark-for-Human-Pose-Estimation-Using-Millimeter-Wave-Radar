@@ -60,7 +60,7 @@ class Runner(BaseRunner):
             if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
                 num_batches = len(self.trainLoader)
             else:
-                num_batches = ceil(len(self.trainLoader / hvd.local_size()))
+                num_batches = ceil(len(self.trainLoader) / hvd.local_size())
 
             for idxBatch, (batch, frames_list) in enumerate(self.trainLoader):
                 self.optimizer.zero_grad()
@@ -76,11 +76,11 @@ class Runner(BaseRunner):
 
                 if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
                     print(f'TRAIN, '
-                          f'Epoch: {epoch}/{self.cfg.TRAINING.epochs}, '
-                          f'Batch: {idxBatch}/{num_batches}, '
-                          f'Loss: {loss.item()}, '
-                          f'Loss1: {loss1.item()}, '
-                          f'Loss2: {loss2.item()}')
+                        f'Epoch: {epoch}/{self.cfg.TRAINING.epochs}, '
+                        f'Batch: {idxBatch}/{num_batches}, '
+                        f'Loss: {loss.item()}, '
+                        f'Loss1: {loss1.item()}, '
+                        f'Loss2: {loss2.item()}')
 
             if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
                 if idxBatch % self.cfg.TRAINING.lrDecayIter == 0: #200 == 0:
@@ -91,6 +91,10 @@ class Runner(BaseRunner):
                 loss2_list.append(loss2.item())
 
                 ap = self.eval(self.evalSet, self.evalLoader, visualization=False, epoch=epoch)
+                print(f'EVAL, '
+                    f'Epoch: {epoch}/{self.cfg.TRAINING.epochs}, '
+                    f'Ap: {ap:.4f}')
+                
                 self.run.log({
                     'train/loss_mean': np.mean(loss_list), 
                     'train/cnn_loss_mean': np.mean(loss1_list),
@@ -173,5 +177,7 @@ class Runner(BaseRunner):
             print("=== Start Evaluation on Test Set ===")
             ap = self.eval(self.testSet, self.testLoader, visualization=True, epoch=self.cfg.TRAINING.epochs - 1)
             print("=== End Evaluation on Test Set ===")
+            print(f'TEST, '
+                f'Ap: {ap:.4f}')
             self.run.log({'test/ap': ap})
 
