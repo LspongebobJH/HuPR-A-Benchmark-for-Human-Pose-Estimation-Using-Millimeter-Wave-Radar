@@ -12,6 +12,7 @@ import wandb
 import pickle
 import omegaconf
 import numpy as np
+from math import ceil
 
 import horovod.torch as hvd
 
@@ -55,7 +56,12 @@ class Runner(BaseRunner):
             loss_list = []
             loss1_list = []
             loss2_list = []
-            self.logger.clear(len(self.trainLoader.dataset))
+
+            if self.cfg.RUN.use_horovod:
+                self.logger.clear(ceil(len(self.trainLoader) / hvd.local_size()))
+            else:
+                self.logger.clear(len(self.trainLoader))
+
             for idxBatch, (batch, frames_list) in enumerate(self.trainLoader):
                 self.optimizer.zero_grad()
                 keypoints = batch['jointsGroup']
@@ -67,7 +73,9 @@ class Runner(BaseRunner):
                 loss, loss1, loss2, _, _ = self.lossComputer.computeLoss(preds, keypoints)
                 loss.backward()
                 self.optimizer.step()                    
-                self.logger.display(loss, loss2, keypoints.size(0), epoch)
+
+                if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+                    self.logger.display(loss, loss2, keypoints.size(0), epoch)
 
             if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
                 if idxBatch % self.cfg.TRAINING.lrDecayIter == 0: #200 == 0:
@@ -140,9 +148,8 @@ class Runner(BaseRunner):
 
         if self.cfg.RUN.use_horovod:
             self.optimizer = hvd.DistributedOptimizer(self.optimizer, named_parameters=self.model.named_parameters())
-
-        hvd.broadcast_parameters(self.model.state_dict(), root_rank=0)
-        hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
+            hvd.broadcast_parameters(self.model.state_dict(), root_rank=0)
+            hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
 
         if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
             run = wandb.init(config=wandb_cfg, project=self.cfg.RUN.project, dir='/mnt/jiahanli/wandb')
