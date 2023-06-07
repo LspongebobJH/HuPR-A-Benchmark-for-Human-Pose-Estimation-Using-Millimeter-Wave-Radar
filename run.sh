@@ -17,6 +17,6 @@
 
 # python gen_gt.py
 
-OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
-horovodrun -np 8 -H localhost:8 python main.py RUN.use_horovod=True SETUP.numWorkers=4
+# OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+horovodrun -np 8 -H localhost:8 python main.py RUN.use_horovod=True SETUP.numWorkers=2
 
