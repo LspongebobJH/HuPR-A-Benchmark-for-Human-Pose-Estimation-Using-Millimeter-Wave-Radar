@@ -9,6 +9,8 @@ import torch.utils.data as data
 import torch.nn.functional as F
 from misc.losses import LossComputer
 
+import horovod.torch as hvd
+
 class BaseRunner():
     def __init__(self, cfg):
         self.device = f'cuda:{cfg.RUN.gpu}' if torch.cuda.is_available() else 'cpu'

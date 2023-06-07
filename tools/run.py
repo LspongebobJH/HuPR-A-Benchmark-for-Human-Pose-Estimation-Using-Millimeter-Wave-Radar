@@ -74,8 +74,8 @@ class Runner(BaseRunner):
                 loss.backward()
                 self.optimizer.step()                    
 
-                if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
-                    self.logger.display(loss, loss2, keypoints.size(0), epoch)
+                # if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+                self.logger.display(loss, loss2, keypoints.size(0), epoch)
 
             if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
                 if idxBatch % self.cfg.TRAINING.lrDecayIter == 0: #200 == 0:
