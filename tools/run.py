@@ -13,6 +13,7 @@ import pickle
 import omegaconf
 import numpy as np
 from math import ceil
+from tqdm import tqdm
 
 import horovod.torch as hvd
 
@@ -23,9 +24,8 @@ class Runner(BaseRunner):
     def eval(self, dataSet, dataLoader, visualization=True, epoch=-1):
         self.model.eval()
         loss_list = []
-        self.logger.clear(len(dataLoader.dataset))
         savePreds = []
-        for idx, (batch, frames_list) in enumerate(dataLoader):
+        for idx, (batch, frames_list) in enumerate(tqdm(dataLoader)):
             keypoints = batch['jointsGroup']
             bbox = batch['bbox']
             imageId = batch['imageId']
@@ -34,7 +34,6 @@ class Runner(BaseRunner):
                 VRDAEmaps_vert = batch['VRDAEmap_vert'].float().cuda()
                 preds = self.model(VRDAEmaps_hori, VRDAEmaps_vert)
                 loss, loss2, preds, gts = self.lossComputer.computeLoss(preds, keypoints)
-                self.logger.display(loss, loss2, keypoints.size(0), epoch)
                 if visualization:
                     plotHumanPose(preds*self.imgHeatmapRatio, self.cfg, 
                                   self.visdir, imageId, None)
@@ -51,16 +50,17 @@ class Runner(BaseRunner):
         return ap
 
     def train(self):
+        best_ap = -1
         for epoch in range(self.start_epoch, self.cfg.TRAINING.epochs):
             self.model.train()
             loss_list = []
             loss1_list = []
             loss2_list = []
 
-            if self.cfg.RUN.use_horovod:
-                self.logger.clear(ceil(len(self.trainLoader.dataset) / hvd.local_size()))
+            if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+                num_batches = len(self.trainLoader)
             else:
-                self.logger.clear(len(self.trainLoader.dataset))
+                num_batches = ceil(len(self.trainLoader / hvd.local_size()))
 
             for idxBatch, (batch, frames_list) in enumerate(self.trainLoader):
                 self.optimizer.zero_grad()
@@ -74,8 +74,13 @@ class Runner(BaseRunner):
                 loss.backward()
                 self.optimizer.step()                    
 
-                # if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
-                self.logger.display(loss, loss2, keypoints.size(0), epoch)
+                if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+                    print(f'TRAIN, '
+                          f'Epoch: {epoch}/{self.cfg.TRAINING.epochs}, '
+                          f'Batch: {idxBatch}/{num_batches}, '
+                          f'Loss: {loss.item()}, '
+                          f'Loss1: {loss1.item()}, '
+                          f'Loss2: {loss2.item()}')
 
             if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
                 if idxBatch % self.cfg.TRAINING.lrDecayIter == 0: #200 == 0:
@@ -93,8 +98,10 @@ class Runner(BaseRunner):
                     'eval/ap': ap
                 })
 
-                self.saveModelWeight(epoch, ap)
-                self.saveLosslist(epoch, loss_list, 'train')
+                if ap >= best_ap:
+                    best_ap = ap
+                    self.saveModelWeight(epoch, ap)
+                    self.saveLosslist(epoch, loss_list, 'train')
 
     def main(self):
         if self.cfg.RUN.use_horovod:

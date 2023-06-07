@@ -33,7 +33,6 @@ class BaseRunner():
 
     def initialize(self, LR):
         self.lossComputer = LossComputer(self.cfg, self.device)
-        self.logger = Logger()
         if not os.path.isdir(self.dir):
             os.mkdir(self.dir)
         if not os.path.isdir(self.visdir):
@@ -79,27 +78,15 @@ class BaseRunner():
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
-            'accuracy': self.logger.showBestAP(),
+            'ap': ap,
         }
-        if self.logger.isBestAccAP(ap):
-            saveGroup['accuracy'] = self.logger.showBestAP()
-            print('==========>Save the best model...')
-            torch.save(saveGroup, os.path.join(self.dir, 'model_best.pth'))
+        print('==========>Save the best model...')
+        torch.save(saveGroup, os.path.join(self.dir, 'model_best.pth'))
 
         print('==========>Save the latest model...')
         torch.save(saveGroup, os.path.join(self.dir, 'checkpoint.pth'))
         if epoch % 5 == 0:
             torch.save(saveGroup, os.path.join(self.dir, 'checkpoint_%d.pth'%epoch))
-
-    def saveCheckpoint(self, epoch):
-        saveGroup = {
-            'epoch': epoch,
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'accuracy': self.logger.showAcc(mode='best'),
-        }
-        print('==========>Save the latest model...')
-        torch.save(saveGroup, os.path.join(self.dir, 'checkpoint_%d.pth' % epoch))
         
     def saveLosslist(self, epoch, loss_list, mode):
         with open(os.path.join(self.dir,'%s_loss_list_%d.json'%(mode, epoch)), 'w') as fp:
@@ -115,7 +102,6 @@ class BaseRunner():
                     print('==========>Load the previous optimizer')
                     self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                     self.start_epoch = checkpoint['epoch']
-                    self.logger.updateBestAcc(checkpoint['accuracy'])
                 else:
                     print('==========>Load a new optimizer')
                 
