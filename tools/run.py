@@ -144,11 +144,12 @@ class Runner(BaseRunner):
         hvd.broadcast_parameters(self.model.state_dict(), root_rank=0)
         hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
 
-        run = wandb.init(config=wandb_cfg, project=self.cfg.RUN.project, dir='/mnt/jiahanli/wandb')
-        run.define_metric("epoch")
-        run.define_metric("train/*", step_metric="epoch")
-        run.define_metric("eval/*", step_metric="epoch")
-        self.run = run
+        if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+            run = wandb.init(config=wandb_cfg, project=self.cfg.RUN.project, dir='/mnt/jiahanli/wandb')
+            run.define_metric("epoch")
+            run.define_metric("train/*", step_metric="epoch")
+            run.define_metric("eval/*", step_metric="epoch")
+            self.run = run
 
         print("=== Start Training ===")
         self.train()
