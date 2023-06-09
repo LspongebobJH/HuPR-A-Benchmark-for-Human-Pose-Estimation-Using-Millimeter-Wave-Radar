@@ -230,7 +230,7 @@ class RadarObject():
         for idxName in range(len(self.radarDataFileNameGroup)):
             adcDataHori = self.getadcDataFromDCA1000(self.radarDataFileNameGroup[idxName][0])
             adcDataVert = self.getadcDataFromDCA1000(self.radarDataFileNameGroup[idxName][1])
-            if self.index != -1:
+            if self.frame == -1:
                 for idxFrame in range(0,self.numFrame):
                     if not os.path.exists(os.path.join(self.saveDirNameGroup[idxName], 'hori', f'{idxFrame:09d}.npy')):
                         frameHori = adcDataHori[:, self.numChirp*(idxFrame):self.numChirp*(idxFrame+1), 0:self.numADCSamples]
