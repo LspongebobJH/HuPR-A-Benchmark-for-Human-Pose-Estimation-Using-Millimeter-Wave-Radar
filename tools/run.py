@@ -77,6 +77,10 @@ class Runner(BaseRunner):
                 self.optimizer.step()                    
 
                 if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+                    loss_list.append(loss.item())
+                    loss1_list.append(loss1.item())
+                    loss2_list.append(loss2.item())
+
                     print(f'TRAIN, '
                         f'Epoch: {epoch}/{self.cfg.TRAINING.epochs}, '
                         f'Batch: {idxBatch}/{num_batches}, '
@@ -86,13 +90,10 @@ class Runner(BaseRunner):
                         f'Batch time: {time.time() - time_st:.2f}s')
 
             if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
-                if idxBatch % self.cfg.TRAINING.lrDecayIter == 0: #200 == 0:
-                    self.adjustLR(epoch)
-                    hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
-                loss_list.append(loss.item())
-                loss1_list.append(loss1.item())
-                loss2_list.append(loss2.item())
-
+                # if idxBatch % self.cfg.TRAINING.lrDecayIter == 0: #200 == 0:
+                #     self.adjustLR(epoch)
+                #     hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
+                
                 time_st = time.time()
                 ap = self.eval(self.evalSet, self.evalLoader, visualization=False, epoch=epoch)
                 print(f'EVAL, '
@@ -104,7 +105,8 @@ class Runner(BaseRunner):
                     'train/loss_mean': np.mean(loss_list), 
                     'train/cnn_loss_mean': np.mean(loss1_list),
                     'train/gnn_loss_mean': np.mean(loss2_list), 
-                    'eval/ap': ap
+                    'eval/ap': ap,
+                    'epoch': epoch
                 })
 
                 if ap >= best_ap:
@@ -187,4 +189,7 @@ class Runner(BaseRunner):
                 f'Ap: {ap:.4f}, '
                 f'Time: {time.time() - time_st:.2f}s')
             self.run.log({'test/ap': ap})
+            wandb.finish()
+
+        
 

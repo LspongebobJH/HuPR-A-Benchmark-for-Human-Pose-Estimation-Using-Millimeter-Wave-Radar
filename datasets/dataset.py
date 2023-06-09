@@ -156,6 +156,7 @@ class HuPR3D_horivert(BaseDataset):
             frame_idx = re.search(r'\d+', VRDAEPath_hori).group()
             frames.append(int(frame_idx))
             
+            # TODO: for now we need to skip the exception to make sure the pipeline can work
             try:
                 VRDAERealImag_hori = np.load(VRDAEPath_hori)
             except Exception as e:
