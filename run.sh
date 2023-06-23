@@ -4,7 +4,7 @@
 #     python preprocessing/process_iwr1843.py --index $i &
 # done
 
-python preprocessing/process_iwr1843.py --index_single 202 --frame 436 &
+# python preprocessing/process_iwr1843.py --index_single 202 --frame 436 &
 # python preprocessing/process_iwr1843.py --index 2 &
 # python preprocessing/process_iwr1843.py --index 3 &
 # python preprocessing/process_iwr1843.py --index 4 &
@@ -18,5 +18,5 @@ python preprocessing/process_iwr1843.py --index_single 202 --frame 436 &
 # python gen_gt.py
 
 # OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
-# horovodrun -np 8 -H localhost:8 python main.py RUN.use_horovod=True SETUP.numWorkers=8 >test.log 2>&1 &
-
+horovodrun -np 8 -H localhost:8 python main.py \
+RUN.project=hupr0 RUN.use_horovod=True SETUP.numWorkers=8 >test.log 2>&1 &
