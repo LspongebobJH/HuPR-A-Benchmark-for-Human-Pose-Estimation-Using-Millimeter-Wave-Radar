@@ -5,7 +5,6 @@ from collections import namedtuple
 from argparse import Namespace
 
 import wandb
-import hydra
 from omegaconf import DictConfig, OmegaConf
 
 if __name__ == "__main__":
