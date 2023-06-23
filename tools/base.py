@@ -33,10 +33,12 @@ class BaseRunner():
 
     def initialize(self, LR):
         self.lossComputer = LossComputer(self.cfg, self.device)
-        if not os.path.isdir(self.dir):
-            os.mkdir(self.dir)
-        if not os.path.isdir(self.visdir):
-            os.mkdir(self.visdir)
+        # TODO: this verification needs to be revised
+        if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+            if not os.path.isdir(self.dir):
+                os.mkdir(self.dir)
+            if not os.path.isdir(self.visdir):
+                os.mkdir(self.visdir)
         if not self.cfg.RUN.test:
             print('==========>Train set size:', len(self.trainLoader))
             print('==========>Eval set size:', len(self.evalLoader))
