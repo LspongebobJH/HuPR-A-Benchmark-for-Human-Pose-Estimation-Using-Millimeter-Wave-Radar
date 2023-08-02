@@ -30,10 +30,11 @@ class Runner(BaseRunner):
             keypoints = batch['jointsGroup']
             bbox = batch['bbox']
             imageId = batch['imageId']
+            video_id = batch['video_id']
             with torch.no_grad():
                 VRDAEmaps_hori = batch['VRDAEmap_hori'].float().cuda()
                 VRDAEmaps_vert = batch['VRDAEmap_vert'].float().cuda()
-                preds = self.model(VRDAEmaps_hori, VRDAEmaps_vert)
+                preds = self.model(VRDAEmaps_hori, VRDAEmaps_vert, video_id)
                 loss, loss2, preds, gts = self.lossComputer.computeLoss(preds, keypoints)
                 if visualization:
                     plotHumanPose(preds*self.imgHeatmapRatio, self.cfg, 
@@ -115,13 +116,24 @@ class Runner(BaseRunner):
                     self.saveLosslist(epoch, loss_list, 'train')
 
     def main(self):
+        if self.cfg.RUN.debug:
+            self.cfg.TRAINING.epochs = 2
+            self.cfg.RUN.logdir = self.cfg.RUN.visdir = 'test'
+            self.cfg.RUN.use_horovod = False
+            
+        if not self.cfg.RUN.debug and not self.cfg.RUN.eval:
+            wandb_cfg = omegaconf.OmegaConf.to_container(self.cfg, resolve=True, throw_on_missing=True)
+
         if self.cfg.RUN.use_horovod:
             hvd.init()
             torch.cuda.set_device(hvd.local_rank())
-
-        wandb_cfg = omegaconf.OmegaConf.to_container(self.cfg, resolve=True, throw_on_missing=True)
         
-        if not self.cfg.RUN.test:
+        self.model = HuPRNet(self.cfg).cuda()
+
+        if self.cfg.RUN.load_checkpoint:
+            self.loadModelWeight('checkpoint')
+        
+        if not self.cfg.RUN.eval:
             self.trainSet = getDataset('train', self.cfg)
             if self.cfg.RUN.use_horovod:
                 train_sampler = torch.utils.data.distributed.DistributedSampler(
@@ -147,43 +159,45 @@ class Runner(BaseRunner):
                                 num_workers=self.cfg.SETUP.numWorkers, 
                                 collate_fn=collate_fn)
             
+            LR = self.cfg.TRAINING.lr if self.cfg.TRAINING.warmupEpoch == -1 else self.cfg.TRAINING.lr / (self.cfg.TRAINING.warmupGrowth ** self.stepSize)
+            self.initialize(LR)
+            self.beta = 0.0
+            self.stepSize = len(self.trainLoader) * self.cfg.TRAINING.warmupEpoch
+            
+
+            if self.cfg.RUN.use_horovod:
+                self.optimizer = hvd.DistributedOptimizer(self.optimizer, named_parameters=self.model.named_parameters())
+                hvd.broadcast_parameters(self.model.state_dict(), root_rank=0)
+                hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
+
+            if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+                run = wandb.init(config=wandb_cfg, project=self.cfg.RUN.project, dir='/mnt/jiahanli/wandb')
+                run.define_metric("epoch")
+                run.define_metric("train/*", step_metric="epoch")
+                run.define_metric("eval/*", step_metric="epoch")
+                self.run = run
+            
         else:
             self.trainLoader = [0] # an empty loader
+            self.loadModelWeight('model_best')
+
         self.testSet = getDataset('test', self.cfg)
         self.testLoader = data.DataLoader(self.testSet, 
                               self.cfg.TEST.batchSize,
                               shuffle=False,
                               num_workers=self.cfg.SETUP.numWorkers, 
                               collate_fn=collate_fn)
-        self.model = HuPRNet(self.cfg).cuda()
-        LR = self.cfg.TRAINING.lr if self.cfg.TRAINING.warmupEpoch == -1 else self.cfg.TRAINING.lr / (self.cfg.TRAINING.warmupGrowth ** self.stepSize)
-        self.initialize(LR)
-        self.beta = 0.0
-        self.stepSize = len(self.trainLoader) * self.cfg.TRAINING.warmupEpoch
-        if self.cfg.RUN.debug:
-            self.cfg.TRAINING.epochs = 2
-            self.cfg.RUN.logdir = self.cfg.RUN.visdir = 'test'
 
-        if self.cfg.RUN.use_horovod:
-            self.optimizer = hvd.DistributedOptimizer(self.optimizer, named_parameters=self.model.named_parameters())
-            hvd.broadcast_parameters(self.model.state_dict(), root_rank=0)
-            hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
-
-        if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
-            run = wandb.init(config=wandb_cfg, project=self.cfg.RUN.project, dir='/mnt/jiahanli/wandb')
-            run.define_metric("epoch")
-            run.define_metric("train/*", step_metric="epoch")
-            run.define_metric("eval/*", step_metric="epoch")
-            self.run = run
-
-        print("=== Start Training ===")
-        self.train()
-        print("=== End Training ===")
+        if not self.cfg.RUN.eval:
+            print("=== Start Training ===")
+            self.train()
+            print("=== End Training ===")
 
         if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
             print("=== Start Evaluation on Test Set ===")
             time_st = time.time()
-            ap = self.eval(self.testSet, self.testLoader, visualization=True, epoch=self.cfg.TRAINING.epochs - 1)
+            vis = False if self.cfg.RUN.visdir == 'none' else True
+            ap = self.eval(self.testSet, self.testLoader, visualization=vis, epoch=self.cfg.TRAINING.epochs - 1)
             print("=== End Evaluation on Test Set ===")
             print(f'TEST, '
                 f'Ap: {ap:.4f}, '

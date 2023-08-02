@@ -4,12 +4,11 @@ RUN:
     logdir: ${RUN.project}
     visdir: ${RUN.project}
     gpu: 0
-    test: False
+    eval: False
     sampling_ratio: 1
     keypoints: False
-    train_load_checkpoint: False
+    load_checkpoint: False
     use_horovod: False
-    num_ray_workers: 0
     debug: False
 
 DATASET:

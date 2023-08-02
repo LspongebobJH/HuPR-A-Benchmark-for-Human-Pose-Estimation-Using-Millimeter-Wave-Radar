@@ -13,11 +13,6 @@ if __name__ == "__main__":
     cfg = OmegaConf.merge(cfg, cfg_cmd)
 
     trigger = Runner(cfg)
-    vis = False if cfg.RUN.visdir == 'none' else True
-    if cfg.RUN.test:
-        trigger.loadModelWeight('model_best')
-        trigger.test(visualization=vis)
-    else:
-        if cfg.RUN.train_load_checkpoint:
-            trigger.loadModelWeight('checkpoint')
-        trigger.main()
+    
+    trigger.main()
+        

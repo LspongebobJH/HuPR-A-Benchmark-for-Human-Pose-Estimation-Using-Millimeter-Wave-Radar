@@ -190,6 +190,54 @@ class HuPR3D_horivert(BaseDataset):
                 'bbox': bbox,
                 'frames': torch.Tensor(frames)}
     
+    def __getitem__test__(self, index):
+        frames = [] # TODO: test
+        if self.random:
+            index = index * random.randint(1, self.sampling_ratio)
+        else:
+            index = index * self.sampling_ratio
+        padSize = index % self.duration
+        idx = index - self.numGroupFrames//2 - 1
+        
+        VRDAEmaps_hori = torch.zeros((self.numGroupFrames, self.numFrames, 2, self.r, self.w, self.h))
+        VRDAEmaps_vert = torch.zeros((self.numGroupFrames, self.numFrames, 2, self.r, self.w, self.h))
+
+        VRDAERealImag_hori_list, VRDAERealImag_vert_list = [], []
+        
+        for j in range(self.numGroupFrames):
+            if (j + padSize) <= self.numGroupFrames//2:
+                idx = index - padSize
+            elif j > (self.duration - 1 - padSize) + self.numGroupFrames//2:
+                idx = index + (self.duration - 1 - padSize)
+            else:
+                idx += 1
+            VRDAEPath_hori = self.VRDAEPaths_hori[idx]
+            VRDAEPath_vert = self.VRDAEPaths_vert[idx]
+
+            frame_idx = re.search(r'\d+', VRDAEPath_hori).group()
+            frames.append(int(frame_idx))
+            
+            # TODO: for now we need to skip the exception to make sure the pipeline can work
+            try:
+                VRDAERealImag_hori = np.load(VRDAEPath_hori)
+            except Exception as e:
+                print()
+                print(VRDAEPath_hori)
+                print(e)
+                exit()
+            try:
+                VRDAERealImag_vert = np.load(VRDAEPath_vert)
+            except Exception as e:
+                print()
+                print(VRDAEPath_vert)
+                print(e)
+                exit()
+
+            VRDAERealImag_hori_list.append(VRDAERealImag_hori)
+            VRDAERealImag_vert_list.append(VRDAERealImag_vert)
+
+        return VRDAERealImag_hori_list, VRDAERealImag_vert_list
+    
     def __len__(self):
         return len(self.VRDAEPaths_hori)//self.sampling_ratio
     

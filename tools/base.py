@@ -39,7 +39,7 @@ class BaseRunner():
                 os.mkdir(self.dir)
             if not os.path.isdir(self.visdir):
                 os.mkdir(self.visdir)
-        if not self.cfg.RUN.test:
+        if not self.cfg.RUN.eval:
             print('==========>Train set size:', len(self.trainLoader))
             print('==========>Eval set size:', len(self.evalLoader))
         print('==========>Test set size:', len(self.testLoader))
