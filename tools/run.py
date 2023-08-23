@@ -25,9 +25,9 @@ class Runner(BaseRunner):
 
     def model_forward(self, batch):
         keypoints = batch['jointsGroup']
-        video_id = batch['video_id']
 
         if self.cfg.DATASET.direction == 'all':
+            video_id = batch['video_id']
             VRDAEmaps_hori = batch['VRDAEmap_hori'].float().cuda()
             VRDAEmaps_vert = batch['VRDAEmap_vert'].float().cuda()
             heatmap, gcn_heatmap = self.model(VRDAEmaps_hori, VRDAEmaps_vert, video_id)
