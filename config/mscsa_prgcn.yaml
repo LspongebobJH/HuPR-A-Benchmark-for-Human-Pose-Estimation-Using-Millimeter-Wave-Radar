@@ -55,8 +55,8 @@ DATASET:
 MODEL:
     numFilters: 32
     n_layers: 3
-    model: "TempPRGCN" # or "PRGCN"
-    # model: "PRGCN"
+    # model: "TempPRGCN" # or "PRGCN"
+    model: "PRGCN"
 TRAINING:
     # batchSize: 20
     batchSize: 12

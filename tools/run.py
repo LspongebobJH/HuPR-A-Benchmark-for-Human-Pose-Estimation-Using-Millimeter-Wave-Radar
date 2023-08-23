@@ -4,7 +4,7 @@ import numpy as np
 import torch.optim as optim
 from models import HuPRNet
 from misc import plotHumanPose
-from datasets.dataset import getDataset, collate_fn
+from datasets.dataset import HuPR3D_horivert, collate_fn
 import torch.utils.data as data
 import torch.nn.functional as F
 from tools.base import BaseRunner
@@ -26,7 +26,7 @@ class Runner(BaseRunner):
         self.model.eval()
         loss_list = []
         savePreds = []
-        for idx, (batch, frames_list) in enumerate(tqdm(dataLoader)):
+        for idx, batch in enumerate(tqdm(dataLoader)):
             keypoints = batch['jointsGroup']
             bbox = batch['bbox']
             imageId = batch['imageId']
@@ -64,7 +64,7 @@ class Runner(BaseRunner):
             else:
                 num_batches = ceil(len(self.trainLoader) / hvd.local_size())
 
-            for idxBatch, (batch, frames_list) in enumerate(self.trainLoader):
+            for idxBatch, batch in enumerate(self.trainLoader):
                 time_st = time.time()
                 self.optimizer.zero_grad()
                 keypoints = batch['jointsGroup']
@@ -134,7 +134,7 @@ class Runner(BaseRunner):
             self.loadModelWeight('checkpoint')
         
         if not self.cfg.RUN.eval:
-            self.trainSet = getDataset('train', self.cfg)
+            self.trainSet = HuPR3D_horivert('train', self.cfg)
             if self.cfg.RUN.use_horovod:
                 train_sampler = torch.utils.data.distributed.DistributedSampler(
                     self.trainSet, num_replicas=hvd.size(), rank=hvd.rank(), shuffle=False)
@@ -143,7 +143,6 @@ class Runner(BaseRunner):
                                 #   shuffle=self.cfg.DATASET.shuffle,
                                   shuffle=False,
                                   num_workers=self.cfg.SETUP.numWorkers,
-                                  collate_fn=collate_fn,
                                   sampler=train_sampler)
             else:
                 self.trainLoader = data.DataLoader(self.trainSet,
@@ -152,7 +151,7 @@ class Runner(BaseRunner):
                                     shuffle=False,
                                     num_workers=self.cfg.SETUP.numWorkers,
                                     collate_fn=collate_fn)
-            self.evalSet = getDataset('val', self.cfg)
+            self.evalSet = HuPR3D_horivert('val', self.cfg)
             self.evalLoader = data.DataLoader(self.evalSet, 
                                 self.cfg.TEST.batchSize,
                                 shuffle=False,
@@ -181,7 +180,7 @@ class Runner(BaseRunner):
             self.trainLoader = [0] # an empty loader
             self.loadModelWeight('model_best')
 
-        self.testSet = getDataset('test', self.cfg)
+        self.testSet = HuPR3D_horivert('test', self.cfg)
         self.testLoader = data.DataLoader(self.testSet, 
                               self.cfg.TEST.batchSize,
                               shuffle=False,
