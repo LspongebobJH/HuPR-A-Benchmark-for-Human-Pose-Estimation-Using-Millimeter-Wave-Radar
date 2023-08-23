@@ -36,7 +36,7 @@ class BasicBlock2D(nn.Module):
         out = self.main(x) + residual
         out = self.relu(out)
         return out
-
+    
 class BasicBlock3D(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, batchnorm=True, activation=nn.ReLU):
         super(BasicBlock3D, self).__init__()
@@ -68,7 +68,86 @@ class BasicBlock3D(nn.Module):
         out = self.main(x) + residual
         out = self.relu(out)
         return out
+    
+class MultiScaleCrossSelfAttentionPRGCNSingle(nn.Module):
+    def __init__(self, cfg, batchnorm=True, activation=nn.ReLU):
+        super(MultiScaleCrossSelfAttentionPRGCNSingle, self).__init__()
+        self.numGroupFrames = cfg.DATASET.numGroupFrames
+        self.numFilters = cfg.MODEL.numFilters
+        self.width = cfg.DATASET.heatmapSize
+        self.height = cfg.DATASET.heatmapSize
+        self.numKeypoints = cfg.DATASET.numKeypoints
 
+        self.decoderLayer3 = nn.Sequential(
+            BasicBlock2D(self.numFilters*8, self.numFilters*8, 3, 1, 1, batchnorm, activation),
+            BasicBlock2D(self.numFilters*8, self.numFilters*4, 3, 1, 1, batchnorm, activation),
+            nn.Upsample(scale_factor=2.0, mode='bilinear', align_corners=True),
+        )
+        self.decoderLayer2 = nn.Sequential(
+            BasicBlock2D(self.numFilters*4*2, self.numFilters*4, 3, 1, 1, batchnorm, activation),
+            BasicBlock2D(self.numFilters*4, self.numFilters*2, 3, 1 ,1, batchnorm, activation),
+            nn.Upsample(scale_factor=2.0, mode='bilinear', align_corners=True),
+        )
+        self.decoderLayer1 = nn.Sequential(
+            BasicBlock2D(self.numFilters*2*2, self.numFilters*2, 3, 1, 1, batchnorm, activation),
+            BasicBlock2D(self.numFilters*2, self.numFilters, 3, 1, 1, batchnorm, activation),
+            nn.Conv2d(self.numFilters, self.numKeypoints, 1, 1, 0, bias=False),
+        )
+
+        A = torch.tensor([
+            [1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],#RHip
+            [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],#RKnee
+            [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],#RAnkle
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],#LHip
+            [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],#LKnee
+            [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],#LAnkle
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],#Neck
+            [0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],#Head
+            [0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0],#LShoulder
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0],#LElbow
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0],#LWrist
+            [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0],#RShoulder
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],#RElbow
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]#RWrist
+        ], dtype=torch.float).cuda()
+        if cfg.MODEL.model == 'PRGCN':
+            self.gcn = PRGCN(cfg, A)
+        elif cfg.MODEL.model == 'TempPRGCN':
+            self.gcn = TempPRGCN(cfg, A)
+
+        filterList = [self.numFilters*8, self.numFilters*4, self.numFilters*2]
+        self.phi_self = nn.ModuleList([nn.Conv2d(i, i, 1, 1, 0, bias=False) for i in filterList])
+        self.theta_self = nn.ModuleList([nn.Conv2d(i, i, 1, 1, 0, bias=False) for i in filterList])
+        self.sigmoid = nn.Sigmoid()
+    
+    def attention(self, k, q, maps):
+        b, c, h, w  = maps.size()
+        k, q = k.view(b, c, h * w), q.view(b, c, h * w)
+        spat_attn = torch.einsum('bij,bik->bjk', (k, q))
+        maps = maps.view(b, c, h * w)
+        maps = torch.einsum('bci,bik->bck', (maps, F.softmax(spat_attn, 1)))
+        maps = maps.view(b, c, h, w)
+        return maps
+
+    def forward(self, l1maps, l2maps, maps):
+        k = self.phi_self[0](maps)
+        q = self.theta_self[0](maps)
+        maps_self = self.attention(k, q, maps)
+        maps = self.decoderLayer3(maps_self) 
+
+        k = self.phi_self[1](l2maps)
+        q = self.theta_self[1](l2maps)
+        l2maps_self = self.attention(k, q, l2maps)
+        maps = self.decoderLayer2(torch.cat((maps, l2maps_self), 1)) 
+
+        k = self.phi_self[2](l1maps)
+        q = self.theta_self[2](l1maps)
+        l1maps_self = self.attention(k, q, l1maps)
+        maps = self.decoderLayer1(torch.cat((maps, l1maps_self), 1)) 
+
+        gcn_output = self.gcn(maps)
+        return maps, gcn_output
+    
 class MultiScaleCrossSelfAttentionPRGCN(nn.Module):
     def __init__(self, cfg, batchnorm=True, activation=nn.ReLU):
         super(MultiScaleCrossSelfAttentionPRGCN, self).__init__()

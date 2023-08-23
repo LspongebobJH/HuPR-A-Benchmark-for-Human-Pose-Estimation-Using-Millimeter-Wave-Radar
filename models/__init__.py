@@ -1,1 +1,1 @@
-from models.networks import HuPRNet
+from models.networks import HuPRNet, HuPRNetSingle

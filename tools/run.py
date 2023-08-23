@@ -2,7 +2,7 @@ import os
 import torch
 import numpy as np
 import torch.optim as optim
-from models import HuPRNet
+from models import HuPRNet, HuPRNetSingle
 from misc import plotHumanPose
 from datasets.dataset import HuPR3D_horivert, collate_fn
 import torch.utils.data as data
@@ -15,35 +15,46 @@ import numpy as np
 from math import ceil
 from tqdm import tqdm
 import time
+from misc.losses import LossComputer
 
 import horovod.torch as hvd
 
 class Runner(BaseRunner):
     def __init__(self, cfg):
         super(Runner, self).__init__(cfg)    
+
+    def model_forward(self, batch):
+        keypoints = batch['jointsGroup']
+        video_id = batch['video_id']
+
+        if self.cfg.DATASET.direction == 'all':
+            VRDAEmaps_hori = batch['VRDAEmap_hori'].float().cuda()
+            VRDAEmaps_vert = batch['VRDAEmap_vert'].float().cuda()
+            heatmap, gcn_heatmap = self.model(VRDAEmaps_hori, VRDAEmaps_vert, video_id)
+        else:
+            VRDAEmaps = batch['VRDAEmap'].float().cuda()
+            heatmap, gcn_heatmap = self.model(VRDAEmaps)
+        loss, loss1, loss2, pred2d, gt2d = self.lossComputer.computeLoss(heatmap, gcn_heatmap, keypoints)
+        return heatmap, gcn_heatmap, loss, loss1, loss2, pred2d, gt2d
     
-    def eval(self, dataSet, dataLoader, visualization=True, epoch=-1):
+    def eval(self, dataSet, dataLoader, visualization=False, epoch=-1):
         self.model.eval()
         loss_list = []
         savePreds = []
         for idx, batch in enumerate(tqdm(dataLoader)):
-            keypoints = batch['jointsGroup']
+            self.model.eval()
+            heatmap, gcn_heatmap, loss, loss1, loss2, pred2d, gt2d = self.model_forward(batch)
+            
             bbox = batch['bbox']
             imageId = batch['imageId']
-            video_id = batch['video_id']
-            with torch.no_grad():
-                VRDAEmaps_hori = batch['VRDAEmap_hori'].float().cuda()
-                VRDAEmaps_vert = batch['VRDAEmap_vert'].float().cuda()
-                preds = self.model(VRDAEmaps_hori, VRDAEmaps_vert, video_id)
-                loss, loss2, preds, gts = self.lossComputer.computeLoss(preds, keypoints)
-                if visualization:
-                    plotHumanPose(preds*self.imgHeatmapRatio, self.cfg, 
-                                  self.visdir, imageId, None)
-                    # # for drawing GT
-                    # plotHumanPose(gts*self.imgHeatmapRatio, self.cfg, 
-                    #               self.visdir, imageId, None)
+            if visualization:
+                plotHumanPose(pred2d*self.imgHeatmapRatio, self.cfg, 
+                                self.visdir, imageId, None)
+                # # for drawing GT
+                # plotHumanPose(gts*self.imgHeatmapRatio, self.cfg, 
+                #               self.visdir, imageId, None)
 
-            self.saveKeypoints(savePreds, preds*self.imgHeatmapRatio, bbox, imageId)
+            self.saveKeypoints(savePreds, pred2d*self.imgHeatmapRatio, bbox, imageId)
             loss_list.append(loss.item())
         self.writeKeypoints(savePreds)
         if self.cfg.RUN.keypoints:
@@ -67,13 +78,8 @@ class Runner(BaseRunner):
             for idxBatch, batch in enumerate(self.trainLoader):
                 time_st = time.time()
                 self.optimizer.zero_grad()
-                keypoints = batch['jointsGroup']
-                bbox = batch['bbox']
-                VRDAEmaps_hori = batch['VRDAEmap_hori'].float().cuda()
-                VRDAEmaps_vert = batch['VRDAEmap_vert'].float().cuda()
-                video_id = batch['video_id']
-                preds = self.model(VRDAEmaps_hori, VRDAEmaps_vert, video_id)
-                loss, loss1, loss2, _, _ = self.lossComputer.computeLoss(preds, keypoints)
+                self.model.train()
+                heatmap, gcn_heatmap, loss, loss1, loss2, pred2d, gt2d = self.model_forward(batch)
                 loss.backward()
                 self.optimizer.step()                    
 
@@ -120,6 +126,7 @@ class Runner(BaseRunner):
             self.cfg.TRAINING.epochs = 2
             self.cfg.RUN.logdir = self.cfg.RUN.visdir = 'test'
             self.cfg.RUN.use_horovod = False
+            self.cfg.RUN.visualization = False
             
         if not self.cfg.RUN.debug and not self.cfg.RUN.eval:
             wandb_cfg = omegaconf.OmegaConf.to_container(self.cfg, resolve=True, throw_on_missing=True)
@@ -128,11 +135,13 @@ class Runner(BaseRunner):
             hvd.init()
             torch.cuda.set_device(hvd.local_rank())
         
-        self.model = HuPRNet(self.cfg).cuda()
+        if self.cfg.DATASET.direction == 'all':
+            self.model = HuPRNet(self.cfg).cuda()
+        elif self.cfg.DATASET.direction in ['hori', 'vert']:
+            self.model = HuPRNetSingle(self.cfg).cuda()
 
-        if self.cfg.RUN.load_checkpoint:
-            self.loadModelWeight('checkpoint')
-        
+        self.lossComputer = LossComputer(self.cfg, self.device)
+
         if not self.cfg.RUN.eval:
             self.trainSet = HuPR3D_horivert('train', self.cfg)
             if self.cfg.RUN.use_horovod:
@@ -159,10 +168,14 @@ class Runner(BaseRunner):
                                 collate_fn=collate_fn)
             
             LR = self.cfg.TRAINING.lr if self.cfg.TRAINING.warmupEpoch == -1 else self.cfg.TRAINING.lr / (self.cfg.TRAINING.warmupGrowth ** self.stepSize)
-            self.initialize(LR)
-            self.beta = 0.0
-            self.stepSize = len(self.trainLoader) * self.cfg.TRAINING.warmupEpoch
-            
+
+            if self.cfg.TRAINING.optimizer == 'sgd':
+                self.optimizer = optim.SGD(self.model.parameters(), lr=LR, momentum=0.9, weight_decay=1e-4)
+            elif self.cfg.TRAINING.optimizer == 'adam':  
+                self.optimizer = optim.Adam(self.model.parameters(), lr=LR, betas=(0.9, 0.999), weight_decay=1e-4)
+
+            if self.cfg.RUN.load_checkpoint:
+                self.loadModelWeight('checkpoint')
 
             if self.cfg.RUN.use_horovod:
                 self.optimizer = hvd.DistributedOptimizer(self.optimizer, named_parameters=self.model.named_parameters())
@@ -175,6 +188,9 @@ class Runner(BaseRunner):
                 run.define_metric("train/*", step_metric="epoch")
                 run.define_metric("eval/*", step_metric="epoch")
                 self.run = run
+
+            print('==========>Train set size:', len(self.trainLoader))
+            print('==========>Eval set size:', len(self.evalLoader))
             
         else:
             self.trainLoader = [0] # an empty loader
@@ -187,6 +203,17 @@ class Runner(BaseRunner):
                               num_workers=self.cfg.SETUP.numWorkers, 
                               collate_fn=collate_fn)
 
+        self.beta = 0.0
+        self.stepSize = len(self.trainLoader) * self.cfg.TRAINING.warmupEpoch
+        
+        if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+            if not os.path.isdir(self.dir):
+                os.mkdir(self.dir)
+            if not os.path.isdir(self.visdir):
+                os.mkdir(self.visdir)
+
+        print('==========>Test set size:', len(self.testLoader))
+
         if not self.cfg.RUN.eval:
             print("=== Start Training ===")
             self.train()
@@ -195,8 +222,7 @@ class Runner(BaseRunner):
         if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
             print("=== Start Evaluation on Test Set ===")
             time_st = time.time()
-            vis = False if self.cfg.RUN.visdir == 'none' else True
-            ap = self.eval(self.testSet, self.testLoader, visualization=vis, epoch=self.cfg.TRAINING.epochs - 1)
+            ap = self.eval(self.testSet, self.testLoader, visualization=self.cfg.RUN.visualization, epoch=self.cfg.TRAINING.epochs - 1)
             print("=== End Evaluation on Test Set ===")
             print(f'TEST, '
                 f'Ap: {ap:.4f}, '

@@ -10,8 +10,11 @@ RUN:
     load_checkpoint: False
     use_horovod: False
     debug: False
+    visualization: False
 
 DATASET:
+    # direction: 'all' # all: horizontal + vertical, hori: horizontal, vert: vertical
+    direction: 'hori'
     upsamplingFactor: 4 # from heatmaps (64 x 64) to RGB (256 x 256)
     duration: 600 
     heatmapSize: 64
@@ -58,8 +61,8 @@ MODEL:
     # model: "TempPRGCN" # or "PRGCN"
     model: "PRGCN"
 TRAINING:
-    # batchSize: 20
-    batchSize: 12
+    batchSize: 20
+    # batchSize: 12
     # epochs: 200
     epochs: 30
     lr: 0.0001

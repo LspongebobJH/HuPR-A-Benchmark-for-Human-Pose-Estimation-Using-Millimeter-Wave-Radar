@@ -23,6 +23,7 @@ class HuPR3D_horivert(BaseDataset):
         if phase not in ('train', 'val', 'test'):
             raise ValueError('Invalid phase: {}'.format(phase))
         super(HuPR3D_horivert, self).__init__(phase)
+        self.direction = cfg.DATASET.direction
         self.duration = cfg.DATASET.duration # 30 FPS * 60 seconds
         self.numFrames = cfg.DATASET.numFrames
         self.numGroupFrames = cfg.DATASET.numGroupFrames
@@ -139,8 +140,10 @@ class HuPR3D_horivert(BaseDataset):
         padSize = index % self.duration
         idx = index - self.numGroupFrames//2 - 1
         
-        VRDAEmaps_hori = torch.zeros((self.numGroupFrames, self.numFrames, 2, self.r, self.w, self.h))
-        VRDAEmaps_vert = torch.zeros((self.numGroupFrames, self.numFrames, 2, self.r, self.w, self.h))
+        if self.direction in ['hori', 'all']:
+            VRDAEmaps_hori = torch.zeros((self.numGroupFrames, self.numFrames, 2, self.r, self.w, self.h))
+        if self.direction in ['vert', 'all']:
+            VRDAEmaps_vert = torch.zeros((self.numGroupFrames, self.numFrames, 2, self.r, self.w, self.h))
         
         for j in range(self.numGroupFrames):
             if (j + padSize) <= self.numGroupFrames//2:
@@ -149,41 +152,51 @@ class HuPR3D_horivert(BaseDataset):
                 idx = index + (self.duration - 1 - padSize)
             else:
                 idx += 1
-            VRDAEPath_hori = self.VRDAEPaths_hori[idx]
-            VRDAEPath_vert = self.VRDAEPaths_vert[idx]
             
-            # TODO: for now we need to skip the exception to make sure the pipeline can work
-            try:
-                VRDAERealImag_hori = np.load(VRDAEPath_hori)
-            except Exception as e:
-                print()
-                print(VRDAEPath_hori)
-                print(e)
-                exit()
-            try:
-                VRDAERealImag_vert = np.load(VRDAEPath_vert)
-            except Exception as e:
-                print()
-                print(VRDAEPath_vert)
-                print(e)
-                exit()
+            if self.direction in ['hori', 'all']:
+                VRDAEPath_hori = self.VRDAEPaths_hori[idx]
+                try:
+                    VRDAERealImag_hori = np.load(VRDAEPath_hori)
+                except Exception as e:
+                    print()
+                    print(VRDAEPath_hori)
+                    print(e)
+                    exit()
+
+            if self.direction in ['vert', 'all']:
+                VRDAEPath_vert = self.VRDAEPaths_vert[idx]
+                try:
+                    VRDAERealImag_vert = np.load(VRDAEPath_vert)
+                except Exception as e:
+                    print()
+                    print(VRDAEPath_vert)
+                    print(e)
+                    exit()
 
             idxSampleChirps = 0
             for idxChirps in range(self.numChirps//2 - self.numFrames//2, self.numChirps//2 + self.numFrames//2):
-                VRDAEmaps_hori[j, idxSampleChirps, 0, :, :, :] = self.transformFunc(VRDAERealImag_hori[idxChirps].real).permute(1, 2, 0)
-                VRDAEmaps_hori[j, idxSampleChirps, 1, :, :, :] = self.transformFunc(VRDAERealImag_hori[idxChirps].imag).permute(1, 2, 0)
-                VRDAEmaps_vert[j, idxSampleChirps, 0, :, :, :] = self.transformFunc(VRDAERealImag_vert[idxChirps].real).permute(1, 2, 0)
-                VRDAEmaps_vert[j, idxSampleChirps, 1, :, :, :] = self.transformFunc(VRDAERealImag_vert[idxChirps].imag).permute(1, 2, 0)
+                if self.direction in ['hori', 'all']:
+                    VRDAEmaps_hori[j, idxSampleChirps, 0, :, :, :] = self.transformFunc(VRDAERealImag_hori[idxChirps].real).permute(1, 2, 0)
+                    VRDAEmaps_hori[j, idxSampleChirps, 1, :, :, :] = self.transformFunc(VRDAERealImag_hori[idxChirps].imag).permute(1, 2, 0)
+                if self.direction in ['vert', 'all']:
+                    VRDAEmaps_vert[j, idxSampleChirps, 0, :, :, :] = self.transformFunc(VRDAERealImag_vert[idxChirps].real).permute(1, 2, 0)
+                    VRDAEmaps_vert[j, idxSampleChirps, 1, :, :, :] = self.transformFunc(VRDAERealImag_vert[idxChirps].imag).permute(1, 2, 0)
                 idxSampleChirps += 1
 
         joints = torch.LongTensor(self.annots[index]['joints'])
         bbox = torch.FloatTensor(self.annots[index]['bbox'])
         imageId = self.annots[index]['imageId']
-        return {'VRDAEmap_hori': VRDAEmaps_hori,
-                'VRDAEmap_vert': VRDAEmaps_vert,
+        if self.direction in ['hori', 'vert']:
+            return {'VRDAEmap': VRDAEmaps_hori if self.direction == 'hori' else VRDAEmaps_vert,
                 'imageId': imageId,
                 'jointsGroup': joints,
                 'bbox': bbox}
+        else:
+            return {'VRDAEmap_hori': VRDAEmaps_hori,
+                    'VRDAEmap_vert': VRDAEmaps_vert,
+                    'imageId': imageId,
+                    'jointsGroup': joints,
+                    'bbox': bbox}
     
     def __getitem__test__(self, index):
         frames = [] # TODO: test

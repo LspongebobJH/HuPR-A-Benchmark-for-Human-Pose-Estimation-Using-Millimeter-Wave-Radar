@@ -20,19 +20,18 @@ class LossComputer():
         self.beta = 1.0
         self.bce = nn.BCELoss()
     
-    def computeLoss(self, preds, gt):
+    def computeLoss(self, heatmap_pred, gcn_heatmap_pred, gt):
         b = gt.size(0)
         heatmaps = torch.zeros((b, self.numKeypoints, self.height, self.width))
         gtKpts = torch.zeros((b, self.numKeypoints, 2))
         for i in range(len(gt)):
             heatmap, gtKpt = generateTarget(gt[i], self.numKeypoints, self.heatmapSize, self.imgSize)
             heatmaps[i, :] = torch.tensor(heatmap)
-            gtKpts[i] = torch.tensor(gtKpt)
-        preds, preds2 = preds      
-        loss1 = self.computeBCESingleFrame(preds.view(-1, self.numKeypoints, self.height, self.width), heatmaps)
-        preds = preds.permute(0, 2, 1, 3, 4).reshape(-1, self.numKeypoints, self.height, self.width)
-        loss2 = self.computeBCESingleFrame(preds2.view(-1, self.numKeypoints, self.height, self.width), heatmaps)
-        preds2 = preds2.permute(0, 2, 1, 3, 4).reshape(-1, self.numKeypoints, self.height, self.width)
+            gtKpts[i] = torch.tensor(gtKpt)    
+        loss1 = self.computeBCESingleFrame(heatmap_pred.view(-1, self.numKeypoints, self.height, self.width), heatmaps)
+        heatmap_pred = heatmap_pred.permute(0, 2, 1, 3, 4).reshape(-1, self.numKeypoints, self.height, self.width)
+        loss2 = self.computeBCESingleFrame(gcn_heatmap_pred.view(-1, self.numKeypoints, self.height, self.width), heatmaps)
+        gcn_heatmap_pred = gcn_heatmap_pred.permute(0, 2, 1, 3, 4).reshape(-1, self.numKeypoints, self.height, self.width)
         if self.alpha < 1.0:
             self.alpha += self.lossDecay
             self.beta -= self.lossDecay
@@ -40,7 +39,7 @@ class LossComputer():
             loss = self.alpha * loss1 + self.beta * loss2
         else:
             loss = loss1 + loss2
-        pred2d, _ = get_max_preds(preds2.detach().cpu().numpy())
+        pred2d, _ = get_max_preds(gcn_heatmap_pred.detach().cpu().numpy())
         gt2d, _ = get_max_preds(heatmaps.detach().cpu().numpy())
         return loss, loss1, loss2, pred2d, gt2d
 

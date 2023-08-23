@@ -31,7 +31,7 @@ class BaseRunner():
         self.aspectRatio = self.imgWidth * 1.0 / self.imgHeight
         self.pixel_std = 200
 
-    def initialize(self, LR):
+    def initialize(self, LR=None):
         self.lossComputer = LossComputer(self.cfg, self.device)
         # TODO: this verification needs to be revised
         if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
@@ -40,14 +40,16 @@ class BaseRunner():
             if not os.path.isdir(self.visdir):
                 os.mkdir(self.visdir)
         if not self.cfg.RUN.eval:
+            if self.cfg.TRAINING.optimizer == 'sgd':
+                self.optimizer = optim.SGD(self.model.parameters(), lr=LR, momentum=0.9, weight_decay=1e-4)
+            elif self.cfg.TRAINING.optimizer == 'adam':  
+                self.optimizer = optim.Adam(self.model.parameters(), lr=LR, betas=(0.9, 0.999), weight_decay=1e-4)
+                
             print('==========>Train set size:', len(self.trainLoader))
             print('==========>Eval set size:', len(self.evalLoader))
         print('==========>Test set size:', len(self.testLoader))
   
-        if self.cfg.TRAINING.optimizer == 'sgd':
-            self.optimizer = optim.SGD(self.model.parameters(), lr=LR, momentum=0.9, weight_decay=1e-4)
-        elif self.cfg.TRAINING.optimizer == 'adam':  
-            self.optimizer = optim.Adam(self.model.parameters(), lr=LR, betas=(0.9, 0.999), weight_decay=1e-4)
+        
 
     def _xywh2cs(self, x, y, w, h):
         center = np.zeros((2), dtype=float)
@@ -109,7 +111,7 @@ class BaseRunner():
                 
             print('==========>Load the model weight from %s, saved at epoch %d' %(self.dir, checkpoint['epoch']))
         else:
-            print('==========>Train the model from scratch')
+            print('==========>Train or evaluate the model from scratch')
     
     def saveKeypoints(self, savePreds, preds, bbox, image_id, predHeatmap=None):
         
