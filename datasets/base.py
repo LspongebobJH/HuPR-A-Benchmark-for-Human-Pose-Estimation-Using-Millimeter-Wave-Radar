@@ -14,7 +14,11 @@ class Normalize(object):
     def __init__(self):
         pass
 
-    def __call__(self, radarData):
+    def __call__(self, radarData): 
+        '''
+        NOTE: min-max normalization + standard normalization.
+        NOTE: Both are conducted in each 64 * 64 frame.
+        '''
         c = radarData.size(0)
         minValues = torch.min(radarData.view(c, -1), 1)[0].view(c, 1, 1)
         radarDataZero = radarData - minValues
