@@ -75,8 +75,8 @@ class Runner(BaseRunner):
             else:
                 num_batches = ceil(len(self.trainLoader) / hvd.local_size())
 
+            time_st = time.time()
             for idxBatch, batch in enumerate(self.trainLoader):
-                time_st = time.time()
                 self.optimizer.zero_grad()
                 self.model.train()
                 _, _, loss, loss1, loss2, _, _ = self.model_forward(batch)
@@ -95,6 +95,7 @@ class Runner(BaseRunner):
                         f'Loss1: {loss1.item():.4f}, '
                         f'Loss2: {loss2.item():.4f}, '
                         f'Batch time: {time.time() - time_st:.2f}s')
+                time_st = time.time()
                     
                 if self.cfg.RUN.debug:
                     break
