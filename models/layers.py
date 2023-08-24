@@ -137,13 +137,13 @@ class MultiScaleCrossSelfAttentionPRGCNSingle(nn.Module):
 
         k = self.phi_self[1](l2maps)
         q = self.theta_self[1](l2maps)
-        l2maps_self = self.attention(k, q, l2maps)
-        maps = self.decoderLayer2(torch.cat((maps, l2maps_self), 1)) 
+        maps_self = self.attention(k, q, l2maps)
+        maps = self.decoderLayer2(torch.cat((maps, maps_self), 1)) 
 
         k = self.phi_self[2](l1maps)
         q = self.theta_self[2](l1maps)
-        l1maps_self = self.attention(k, q, l1maps)
-        maps = self.decoderLayer1(torch.cat((maps, l1maps_self), 1)) 
+        maps_self = self.attention(k, q, l1maps)
+        maps = self.decoderLayer1(torch.cat((maps, maps_self), 1)) 
 
         gcn_output = self.gcn(maps)
         return maps, gcn_output

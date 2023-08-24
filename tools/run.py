@@ -43,7 +43,7 @@ class Runner(BaseRunner):
         savePreds = []
         for idx, batch in enumerate(tqdm(dataLoader)):
             self.model.eval()
-            heatmap, gcn_heatmap, loss, loss1, loss2, pred2d, gt2d = self.model_forward(batch)
+            _, _, loss, _, _, pred2d, _ = self.model_forward(batch)
             
             bbox = batch['bbox']
             imageId = batch['imageId']
@@ -79,7 +79,7 @@ class Runner(BaseRunner):
                 time_st = time.time()
                 self.optimizer.zero_grad()
                 self.model.train()
-                heatmap, gcn_heatmap, loss, loss1, loss2, pred2d, gt2d = self.model_forward(batch)
+                _, _, loss, loss1, loss2, _, _ = self.model_forward(batch)
                 loss.backward()
                 self.optimizer.step()                    
 
@@ -95,6 +95,9 @@ class Runner(BaseRunner):
                         f'Loss1: {loss1.item():.4f}, '
                         f'Loss2: {loss2.item():.4f}, '
                         f'Batch time: {time.time() - time_st:.2f}s')
+                    
+                if self.cfg.RUN.debug:
+                    break
 
             if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
                 # if idxBatch % self.cfg.TRAINING.lrDecayIter == 0: #200 == 0:
@@ -182,7 +185,7 @@ class Runner(BaseRunner):
                 hvd.broadcast_parameters(self.model.state_dict(), root_rank=0)
                 hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
 
-            if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+            if not self.cfg.RUN.debug and ((self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod):
                 run = wandb.init(config=wandb_cfg, project=self.cfg.RUN.project, dir='/mnt/jiahanli/wandb')
                 run.define_metric("epoch")
                 run.define_metric("train/*", step_metric="epoch")
