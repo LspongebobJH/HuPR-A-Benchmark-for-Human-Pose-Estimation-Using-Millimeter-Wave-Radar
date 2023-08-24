@@ -96,20 +96,16 @@ class BaseRunner():
         with open(os.path.join(self.dir,'%s_loss_list_%d.json'%(mode, epoch)), 'w') as fp:
             json.dump(loss_list, fp)
     
-    def loadModelWeight(self, mode):
-        checkpoint = os.path.join(self.dir, '%s.pth'%mode)
-        if os.path.isdir(self.dir) and os.path.exists(checkpoint):
-            checkpoint = torch.load(checkpoint)
+    def loadModelWeight(self, mode, continue_training=False):
+        checkpoint_path = os.path.join(self.dir, '%s.pth'%mode)
+        if os.path.isdir(self.dir) and os.path.exists(checkpoint_path):
+            checkpoint = torch.load(checkpoint_path)
             self.model.load_state_dict(checkpoint['model_state_dict'])
-            if not self.cfg.RUN.eval:
-                if not self.cfg.RUN.pretrained: #self.cfg.RUN.pretrained_encoder:
-                    print('==========>Load the previous optimizer')
-                    self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                    self.start_epoch = checkpoint['epoch']
-                else:
-                    print('==========>Load a new optimizer')
-                
-            print('==========>Load the model weight from %s, saved at epoch %d' %(self.dir, checkpoint['epoch']))
+            if continue_training:
+                print('==========>Load the previous optimizer')
+                self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                self.start_epoch = checkpoint['epoch']
+            print('==========>Load the model weight from %s, saved at epoch %d' %(checkpoint_path, checkpoint['epoch']))
         else:
             print('==========>Train or evaluate the model from scratch')
     
@@ -138,8 +134,8 @@ class BaseRunner():
 
         return savePreds
 
-    def writeKeypoints(self, preds):
-        predFile = os.path.join(self.dir, "test_results.json" if self.cfg.RUN.eval else "val_results.json")
+    def writeKeypoints(self, preds, phase):
+        predFile = os.path.join(self.dir, f"{phase}_results.json")
         with open(predFile, 'w') as fp:
             json.dump(preds, fp)
 

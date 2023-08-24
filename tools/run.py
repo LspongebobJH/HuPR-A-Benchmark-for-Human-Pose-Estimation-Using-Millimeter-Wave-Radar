@@ -56,10 +56,14 @@ class Runner(BaseRunner):
 
             self.saveKeypoints(savePreds, pred2d*self.imgHeatmapRatio, bbox, imageId)
             loss_list.append(loss.item())
-        self.writeKeypoints(savePreds)
+
+            if self.cfg.RUN.debug:
+                break
+        self.writeKeypoints(savePreds, dataSet.phase)
         if self.cfg.RUN.keypoints:
             ap = dataSet.evaluateEach(self.dir)
-        ap = dataSet.evaluate(self.dir)
+        else:
+            ap = dataSet.evaluate(self.dir)
         return ap
 
     def train(self):
@@ -111,14 +115,15 @@ class Runner(BaseRunner):
                     f'Epoch: {epoch}/{self.cfg.TRAINING.epochs}, '
                     f'Ap: {ap:.4f}, '
                     f'Time: {time.time() - time_st:.2f}s')
-                
-                self.run.log({
-                    'train/loss_mean': np.mean(loss_list), 
-                    'train/cnn_loss_mean': np.mean(loss1_list),
-                    'train/gnn_loss_mean': np.mean(loss2_list), 
-                    'eval/ap': ap,
-                    'epoch': epoch
-                })
+
+                if not self.cfg.RUN.debug:
+                    self.run.log({
+                        'train/loss_mean': np.mean(loss_list), 
+                        'train/cnn_loss_mean': np.mean(loss1_list),
+                        'train/gnn_loss_mean': np.mean(loss2_list), 
+                        'eval/ap': ap,
+                        'epoch': epoch
+                    })
 
                 if ap >= best_ap:
                     best_ap = ap
@@ -127,7 +132,7 @@ class Runner(BaseRunner):
 
     def main(self):
         if self.cfg.RUN.debug:
-            self.cfg.TRAINING.epochs = 2
+            self.cfg.TRAINING.epochs = 3
             self.cfg.RUN.logdir = self.cfg.RUN.visdir = 'test'
             self.cfg.RUN.use_horovod = False
             self.cfg.RUN.visualization = False
@@ -179,7 +184,7 @@ class Runner(BaseRunner):
                 self.optimizer = optim.Adam(self.model.parameters(), lr=LR, betas=(0.9, 0.999), weight_decay=1e-4)
 
             if self.cfg.RUN.load_checkpoint:
-                self.loadModelWeight('checkpoint')
+                self.loadModelWeight('checkpoint', continue_training=True)
 
             if self.cfg.RUN.use_horovod:
                 self.optimizer = hvd.DistributedOptimizer(self.optimizer, named_parameters=self.model.named_parameters())
@@ -198,7 +203,6 @@ class Runner(BaseRunner):
             
         else:
             self.trainLoader = [0] # an empty loader
-            self.loadModelWeight('model_best')
 
         self.testSet = HuPR3D_horivert('test', self.cfg)
         self.testLoader = data.DataLoader(self.testSet, 
@@ -226,13 +230,16 @@ class Runner(BaseRunner):
         if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
             print("=== Start Evaluation on Test Set ===")
             time_st = time.time()
+            self.loadModelWeight('model_best')
             ap = self.eval(self.testSet, self.testLoader, visualization=self.cfg.RUN.visualization, epoch=self.cfg.TRAINING.epochs - 1)
             print("=== End Evaluation on Test Set ===")
             print(f'TEST, '
                 f'Ap: {ap:.4f}, '
                 f'Time: {time.time() - time_st:.2f}s')
-            self.run.log({'test/ap': ap})
-            wandb.finish()
+            
+            if not self.cfg.RUN.debug:
+                self.run.log({'test/ap': ap})
+                wandb.finish()
 
         
 
