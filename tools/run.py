@@ -138,22 +138,23 @@ class Runner(BaseRunner):
             self.cfg.RUN.logdir = self.cfg.RUN.visdir = 'test'
             self.cfg.RUN.use_horovod = False
             self.cfg.RUN.visualization = False
+
+        if self.cfg.RUN.use_horovod:
+            hvd.init()
+            torch.cuda.set_device(hvd.local_rank())
         
         dir_list = [self.dir, self.visdir, self.checkpoint_dir, self.result_dir, self.tensorboard_dir]
         for _dir in dir_list:
             if not os.path.isdir(_dir):
                 os.mkdir(_dir)
             
-        if not self.cfg.RUN.debug and not self.cfg.RUN.eval:
+        # TODO: need a more elegant way to judge it
+        if not self.cfg.RUN.debug and not self.cfg.RUN.eval and ((self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod):
             cfg = omegaconf.OmegaConf.to_container(self.cfg, resolve=True, throw_on_missing=True)
             with open(os.path.join(self.dir, "config.json"), "w") as file:
                 json.dump(cfg, file)
 
         self.lossComputer = LossComputer(self.cfg)
-
-        if self.cfg.RUN.use_horovod:
-            hvd.init()
-            torch.cuda.set_device(hvd.local_rank())
 
         if self.cfg.DATASET.direction == 'all':
             self.model = HuPRNet(self.cfg).cuda()
