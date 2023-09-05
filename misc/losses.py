@@ -7,8 +7,7 @@ from misc import get_max_preds, generateTarget
 
 
 class LossComputer():
-    def __init__(self, cfg, device):
-        self.device = device
+    def __init__(self, cfg):
         self.cfg = cfg
         self.numFrames = self.cfg.DATASET.numFrames
         self.numGroupFrames = self.cfg.DATASET.numGroupFrames

@@ -17,7 +17,10 @@ from tqdm import tqdm
 import time
 from misc.losses import LossComputer
 
+import json
 import horovod.torch as hvd
+
+from torch.utils.tensorboard import SummaryWriter
 
 class Runner(BaseRunner):
     def __init__(self, cfg):
@@ -57,13 +60,13 @@ class Runner(BaseRunner):
             self.saveKeypoints(savePreds, pred2d*self.imgHeatmapRatio, bbox, imageId)
             loss_list.append(loss.item())
 
-            # if self.cfg.RUN.debug:
-            #     break
+            if self.cfg.RUN.debug:
+                break
         self.writeKeypoints(savePreds, dataSet.phase)
         if self.cfg.RUN.keypoints:
-            ap = dataSet.evaluateEach(self.dir)
+            ap = dataSet.evaluateEach(self.result_dir)
         else:
-            ap = dataSet.evaluate(self.dir)
+            ap = dataSet.evaluate(self.result_dir)
         return ap
 
     def train(self):
@@ -117,13 +120,12 @@ class Runner(BaseRunner):
                     f'Time: {time.time() - time_st:.2f}s')
 
                 if not self.cfg.RUN.debug:
-                    self.run.log({
-                        'train/loss_mean': np.mean(loss_list), 
-                        'train/cnn_loss_mean': np.mean(loss1_list),
-                        'train/gnn_loss_mean': np.mean(loss2_list), 
-                        'eval/ap': ap,
-                        'epoch': epoch
-                    })
+                    self.run.add_scalars('train', {
+                        'loss_mean': np.mean(loss_list),
+                        'cnn_loss_mean': np.mean(loss1_list),
+                        'gnn_loss_mean': np.mean(loss2_list), 
+                    }, global_step=epoch)
+                    self.run.add_scalar('eval/ap', ap, global_step=epoch)
 
                 if ap >= best_ap:
                     best_ap = ap
@@ -132,24 +134,31 @@ class Runner(BaseRunner):
 
     def main(self):
         if self.cfg.RUN.debug:
-            self.cfg.TRAINING.epochs = 1
+            self.cfg.TRAINING.epochs = 3
             self.cfg.RUN.logdir = self.cfg.RUN.visdir = 'test'
             self.cfg.RUN.use_horovod = False
             self.cfg.RUN.visualization = False
+        
+        dir_list = [self.dir, self.visdir, self.checkpoint_dir, self.result_dir, self.tensorboard_dir]
+        for _dir in dir_list:
+            if not os.path.isdir(_dir):
+                os.mkdir(_dir)
             
         if not self.cfg.RUN.debug and not self.cfg.RUN.eval:
-            wandb_cfg = omegaconf.OmegaConf.to_container(self.cfg, resolve=True, throw_on_missing=True)
+            cfg = omegaconf.OmegaConf.to_container(self.cfg, resolve=True, throw_on_missing=True)
+            with open(os.path.join(self.dir, "config.json"), "w") as file:
+                json.dump(cfg, file)
+
+        self.lossComputer = LossComputer(self.cfg)
 
         if self.cfg.RUN.use_horovod:
             hvd.init()
             torch.cuda.set_device(hvd.local_rank())
-        
+
         if self.cfg.DATASET.direction == 'all':
             self.model = HuPRNet(self.cfg).cuda()
         elif self.cfg.DATASET.direction in ['hori', 'vert']:
             self.model = HuPRNetSingle(self.cfg).cuda()
-
-        self.lossComputer = LossComputer(self.cfg, self.device)
 
         if not self.cfg.RUN.eval:
             self.trainSet = HuPR3D_horivert('train', self.cfg)
@@ -192,11 +201,7 @@ class Runner(BaseRunner):
                 hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
 
             if not self.cfg.RUN.debug and ((self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod):
-                run = wandb.init(config=wandb_cfg, project=self.cfg.RUN.project, dir='/mnt/jiahanli/wandb')
-                run.define_metric("epoch")
-                run.define_metric("train/*", step_metric="epoch")
-                run.define_metric("eval/*", step_metric="epoch")
-                self.run = run
+                self.run = SummaryWriter(log_dir=self.tensorboard_dir)
 
             print('==========>Train set size:', len(self.trainLoader))
             print('==========>Eval set size:', len(self.evalLoader))
@@ -214,12 +219,6 @@ class Runner(BaseRunner):
         self.beta = 0.0
         self.stepSize = len(self.trainLoader) * self.cfg.TRAINING.warmupEpoch
         
-        if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
-            if not os.path.isdir(self.dir):
-                os.mkdir(self.dir)
-            if not os.path.isdir(self.visdir):
-                os.mkdir(self.visdir)
-
         print('==========>Test set size:', len(self.testLoader))
 
         if not self.cfg.RUN.eval:
@@ -238,8 +237,9 @@ class Runner(BaseRunner):
                 f'Time: {time.time() - time_st:.2f}s')
             
             if not self.cfg.RUN.debug:
-                self.run.log({'test/ap': ap})
-                wandb.finish()
+                self.run.add_scalar('test/ap', ap)
+                self.run.flush()
+                self.run.close()
 
         
 

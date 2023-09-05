@@ -17,8 +17,13 @@ class BaseRunner():
         np.random.seed(cfg.RUN.seed)
         torch.manual_seed(cfg.RUN.seed)
         torch.cuda.manual_seed_all(cfg.RUN.seed)
+
         self.dir = './logs/' + cfg.RUN.logdir
         self.visdir = './visualization/' + cfg.RUN.visdir
+        self.checkpoint_dir = os.path.join(self.dir, 'checkpoints')
+        self.result_dir = os.path.join(self.dir, 'results')
+        self.tensorboard_dir = os.path.join(self.dir, 'tensorboard')
+        
         self.cfg = cfg
         self.heatmapSize = self.width = self.height = self.cfg.DATASET.heatmapSize
         self.imgSize = self.imgWidth = self.imgHeight = self.cfg.DATASET.imgSize
@@ -31,14 +36,15 @@ class BaseRunner():
         self.aspectRatio = self.imgWidth * 1.0 / self.imgHeight
         self.pixel_std = 200
 
-    def initialize(self, LR=None):
+    def initialize(self, LR=None): # TODO(jiahang): for now this function is not being used anymore since it's contradicted with distributed training logic.
         self.lossComputer = LossComputer(self.cfg, self.device)
         # TODO: this verification needs to be revised
         if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
-            if not os.path.isdir(self.dir):
-                os.mkdir(self.dir)
-            if not os.path.isdir(self.visdir):
-                os.mkdir(self.visdir)
+            dir_list = [self.dir, self.visdir, self.checkpoint_dir, self.result_dir, self.tensorboard_dir]
+            for _dir in dir_list:
+                if not os.path.isdir(_dir):
+                    os.mkdir(_dir)
+
         if not self.cfg.RUN.eval:
             if self.cfg.TRAINING.optimizer == 'sgd':
                 self.optimizer = optim.SGD(self.model.parameters(), lr=LR, momentum=0.9, weight_decay=1e-4)
@@ -49,8 +55,6 @@ class BaseRunner():
             print('==========>Eval set size:', len(self.evalLoader))
         print('==========>Test set size:', len(self.testLoader))
   
-        
-
     def _xywh2cs(self, x, y, w, h):
         center = np.zeros((2), dtype=float)
         center[0] = x + w * 0.5
@@ -85,20 +89,20 @@ class BaseRunner():
             'ap': ap,
         }
         print('==========>Save the best model...')
-        torch.save(saveGroup, os.path.join(self.dir, 'model_best.pth'))
+        torch.save(saveGroup, os.path.join(self.checkpoint_dir, 'model_best.pth'))
 
         print('==========>Save the latest model...')
-        torch.save(saveGroup, os.path.join(self.dir, 'checkpoint.pth'))
+        torch.save(saveGroup, os.path.join(self.checkpoint_dir, 'checkpoint.pth'))
         if epoch % 5 == 0:
-            torch.save(saveGroup, os.path.join(self.dir, 'checkpoint_%d.pth'%epoch))
+            torch.save(saveGroup, os.path.join(self.checkpoint_dir, 'checkpoint_%d.pth'%epoch))
         
     def saveLosslist(self, epoch, loss_list, mode):
-        with open(os.path.join(self.dir,'%s_loss_list_%d.json'%(mode, epoch)), 'w') as fp:
+        with open(os.path.join(self.result_dir,'%s_loss_list_%d.json'%(mode, epoch)), 'w') as fp:
             json.dump(loss_list, fp)
     
     def loadModelWeight(self, mode, continue_training=False):
-        checkpoint_path = os.path.join(self.dir, '%s.pth'%mode)
-        if os.path.isdir(self.dir) and os.path.exists(checkpoint_path):
+        checkpoint_path = os.path.join(self.checkpoint_dir, '%s.pth'%mode)
+        if os.path.isdir(self.checkpoint_dir) and os.path.exists(checkpoint_path):
             checkpoint = torch.load(checkpoint_path)
             self.model.load_state_dict(checkpoint['model_state_dict'])
             if continue_training:
@@ -135,7 +139,7 @@ class BaseRunner():
         return savePreds
 
     def writeKeypoints(self, preds, phase):
-        predFile = os.path.join(self.dir, f"{phase}_results.json")
+        predFile = os.path.join(self.result_dir, f"{phase}_results.json")
         with open(predFile, 'w') as fp:
             json.dump(preds, fp)
 
