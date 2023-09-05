@@ -57,8 +57,8 @@ class Runner(BaseRunner):
             self.saveKeypoints(savePreds, pred2d*self.imgHeatmapRatio, bbox, imageId)
             loss_list.append(loss.item())
 
-            if self.cfg.RUN.debug:
-                break
+            # if self.cfg.RUN.debug:
+            #     break
         self.writeKeypoints(savePreds, dataSet.phase)
         if self.cfg.RUN.keypoints:
             ap = dataSet.evaluateEach(self.dir)
@@ -132,7 +132,7 @@ class Runner(BaseRunner):
 
     def main(self):
         if self.cfg.RUN.debug:
-            self.cfg.TRAINING.epochs = 3
+            self.cfg.TRAINING.epochs = 1
             self.cfg.RUN.logdir = self.cfg.RUN.visdir = 'test'
             self.cfg.RUN.use_horovod = False
             self.cfg.RUN.visualization = False
