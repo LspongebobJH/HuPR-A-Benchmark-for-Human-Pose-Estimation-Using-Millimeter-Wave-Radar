@@ -140,10 +140,11 @@ class Runner(BaseRunner):
             hvd.init()
             torch.cuda.set_device(hvd.local_rank())
         
-        dir_list = [self.dir, self.visdir, self.checkpoint_dir, self.result_dir, self.tensorboard_dir]
-        for _dir in dir_list:
-            if not os.path.isdir(_dir):
-                os.mkdir(_dir)
+        if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+            dir_list = [self.dir, self.visdir, self.checkpoint_dir, self.result_dir, self.tensorboard_dir]
+            for _dir in dir_list:
+                if not os.path.isdir(_dir):
+                    os.mkdir(_dir)
             
         # TODO: need a more elegant way to judge it
         if not self.cfg.RUN.debug and not self.cfg.RUN.eval and ((self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod):
