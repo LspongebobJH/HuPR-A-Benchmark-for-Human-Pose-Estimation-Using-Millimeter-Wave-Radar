@@ -70,7 +70,11 @@ class Runner(BaseRunner):
         return ap
 
     def train(self):
-        best_ap = -1
+        if hasattr(self, 'start_ap'):
+            best_ap = self.start_ap
+        else:
+            best_ap = -1
+
         for epoch in range(self.start_epoch, self.cfg.TRAINING.epochs):
             self.model.train()
             loss_list = []
@@ -104,8 +108,8 @@ class Runner(BaseRunner):
                         f'Batch time: {time.time() - time_st:.2f}s')
                 time_st = time.time()
                     
-                if self.cfg.RUN.debug:
-                    break
+                # if self.cfg.RUN.debug: # TODO: should remove comment
+                #     break
 
             if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
                 # if idxBatch % self.cfg.TRAINING.lrDecayIter == 0: #200 == 0:
@@ -131,7 +135,7 @@ class Runner(BaseRunner):
                     
     def main(self):
         if self.cfg.RUN.debug:
-            self.cfg.TRAINING.epochs = 3
+            # self.cfg.TRAINING.epochs = 3 # TODO: should remove comment
             self.cfg.RUN.logdir = self.cfg.RUN.visdir = 'test'
             self.cfg.RUN.use_horovod = False
             self.cfg.RUN.visualization = False
@@ -140,7 +144,7 @@ class Runner(BaseRunner):
             hvd.init()
             torch.cuda.set_device(hvd.local_rank())
         
-        if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+        if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod: # TODO: this test needs more elegant judgement
             dir_list = [self.dir, self.visdir, self.checkpoint_dir, self.result_dir, self.tensorboard_dir]
             for _dir in dir_list:
                 if not os.path.isdir(_dir):
@@ -191,7 +195,7 @@ class Runner(BaseRunner):
             elif self.cfg.TRAINING.optimizer == 'adam':  
                 self.optimizer = optim.Adam(self.model.parameters(), lr=LR, betas=(0.9, 0.999), weight_decay=1e-4)
 
-            if self.cfg.RUN.load_checkpoint:
+            if self.cfg.RUN.load_checkpoint and ((self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod):
                 self.loadModelWeight('checkpoint', checkpoint_dir=self.cfg.RUN.checkpoint_dir, continue_training=True)
 
             if self.cfg.RUN.use_horovod:

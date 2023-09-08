@@ -116,15 +116,18 @@ class BaseRunner():
             checkpoint_path = os.path.join(self.checkpoint_dir, '%s.pth'%mode)
         if os.path.exists(checkpoint_path):
             print('==========>Loading the checkpoint')
-            checkpoint = torch.load(checkpoint_path)
+            checkpoint = torch.load(checkpoint_path, map_location='cpu')
             self.model.load_state_dict(checkpoint['model_state_dict'])
             if continue_training:
                 print('==========>Loading the previous optimizer')
                 self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                 self.start_epoch = checkpoint['epoch']
+                self.start_ap = checkpoint['ap']
             print('==========>Loading the model weight from %s, saved at epoch %d' %(checkpoint_path, checkpoint['epoch']))
         else:
             print('==========>Train or evaluate the model from scratch')
+        del checkpoint
+        torch.cuda.empty_cache()
     
     def saveKeypoints(self, savePreds, preds, bbox, image_id, predHeatmap=None):
         
