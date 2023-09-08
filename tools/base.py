@@ -81,35 +81,48 @@ class BaseRunner():
                 param_group['lr'] *= self.cfg.TRAINING.lrDecay
 
 
-    def saveModelWeight(self, epoch, ap):
+    def saveStatus(self, epoch, ap, best_ap, loss_list):
         saveGroup = {
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'ap': ap,
         }
-        print('==========>Save the best model...')
-        torch.save(saveGroup, os.path.join(self.checkpoint_dir, 'model_best.pth'))
-
-        print('==========>Save the latest model...')
-        torch.save(saveGroup, os.path.join(self.checkpoint_dir, 'checkpoint.pth'))
-        if epoch % 5 == 0:
-            torch.save(saveGroup, os.path.join(self.checkpoint_dir, 'checkpoint_%d.pth'%epoch))
         
-    def saveLosslist(self, epoch, loss_list, mode):
+        if ap >= best_ap:
+            print(f'==========>Save the best model at epoch {epoch}...')
+            torch.save(saveGroup, os.path.join(self.checkpoint_dir, 'model_best.pth'))
+            self.saveLosslist(epoch, loss_list, 'train')
+            ap = best_ap
+
+        if epoch % 5 == 0:
+            print(f'==========>Save the latest model at epoch {epoch}...')
+            torch.save(saveGroup, os.path.join(self.checkpoint_dir, 'checkpoint_%d.pth'%epoch))
+            self.saveLosslist(epoch, loss_list, 'train')
+
+        return ap
+        
+    def _saveLosslist(self, epoch, loss_list, mode):
         with open(os.path.join(self.result_dir,'%s_loss_list_%d.json'%(mode, epoch)), 'w') as fp:
             json.dump(loss_list, fp)
     
-    def loadModelWeight(self, mode, continue_training=False):
-        checkpoint_path = os.path.join(self.checkpoint_dir, '%s.pth'%mode)
-        if os.path.isdir(self.checkpoint_dir) and os.path.exists(checkpoint_path):
+    def loadModelWeight(self, mode, checkpoint_dir='', continue_training=False):
+        assert (checkpoint_dir != '' and continue_training == True) or \
+            (checkpoint_dir == '' and continue_training == False), \
+            "The arguments checkpoint_dir does not align with continute_training."
+        if checkpoint_dir:
+            checkpoint_path = os.path.join('./logs', checkpoint_dir, 'checkpoints', '%s.pth'%mode)
+        else:
+            checkpoint_path = os.path.join(self.checkpoint_dir, '%s.pth'%mode)
+        if os.path.exists(checkpoint_path):
+            print('==========>Loading the checkpoint')
             checkpoint = torch.load(checkpoint_path)
             self.model.load_state_dict(checkpoint['model_state_dict'])
             if continue_training:
-                print('==========>Load the previous optimizer')
+                print('==========>Loading the previous optimizer')
                 self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                 self.start_epoch = checkpoint['epoch']
-            print('==========>Load the model weight from %s, saved at epoch %d' %(checkpoint_path, checkpoint['epoch']))
+            print('==========>Loading the model weight from %s, saved at epoch %d' %(checkpoint_path, checkpoint['epoch']))
         else:
             print('==========>Train or evaluate the model from scratch')
     

@@ -126,12 +126,9 @@ class Runner(BaseRunner):
                         'gnn_loss_mean': np.mean(loss2_list), 
                     }, global_step=epoch)
                     self.run.add_scalar('eval/ap', ap, global_step=epoch)
-
-                if ap >= best_ap:
-                    best_ap = ap
-                    self.saveModelWeight(epoch, ap)
-                    self.saveLosslist(epoch, loss_list, 'train')
-
+                
+                ap = self.saveStatus(epoch, ap, best_ap, loss_list)
+                    
     def main(self):
         if self.cfg.RUN.debug:
             self.cfg.TRAINING.epochs = 3
@@ -194,7 +191,7 @@ class Runner(BaseRunner):
                 self.optimizer = optim.Adam(self.model.parameters(), lr=LR, betas=(0.9, 0.999), weight_decay=1e-4)
 
             if self.cfg.RUN.load_checkpoint:
-                self.loadModelWeight('checkpoint', continue_training=True)
+                self.loadModelWeight('checkpoint', checkpoint_dir=self.cfg.RUN.checkpoint_dir, continue_training=True)
 
             if self.cfg.RUN.use_horovod:
                 self.optimizer = hvd.DistributedOptimizer(self.optimizer, named_parameters=self.model.named_parameters())

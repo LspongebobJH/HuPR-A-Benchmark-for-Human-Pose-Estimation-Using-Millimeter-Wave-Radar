@@ -3,6 +3,7 @@ RUN:
     project: test
     logdir: ${RUN.project}
     visdir: ${RUN.project}
+    checkpoint_dir: ''
     gpu: 0
     eval: False
     sampling_ratio: 1
