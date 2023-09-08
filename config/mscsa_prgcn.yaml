@@ -65,7 +65,7 @@ TRAINING:
     batchSize: 20
     # batchSize: 12
     # epochs: 200
-    epochs: 30
+    epochs: 40
     lr: 0.0001
     warmupEpoch: -1
     warmupGrowth: 1.005
