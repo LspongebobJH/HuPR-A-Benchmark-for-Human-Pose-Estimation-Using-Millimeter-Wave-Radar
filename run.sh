@@ -19,4 +19,4 @@
 
 # OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
 horovodrun -np 8 -H localhost:8 python main.py \
-RUN.project=hupr1 RUN.use_horovod=True SETUP.numWorkers=8 >./logs/hupr1.log 2>&1 &
+RUN.project=hupr1-1 RUN.use_horovod=True SETUP.numWorkers=8 >./logs/hupr1-1.log 2>&1 &
