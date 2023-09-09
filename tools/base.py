@@ -92,13 +92,13 @@ class BaseRunner():
         if ap >= best_ap:
             print(f'==========>Save the best model at epoch {epoch}...')
             torch.save(saveGroup, os.path.join(self.checkpoint_dir, 'model_best.pth'))
-            self.saveLosslist(epoch, loss_list, 'train')
+            self._saveLosslist(epoch, loss_list, 'train')
             ap = best_ap
 
         if epoch % 5 == 0:
             print(f'==========>Save the latest model at epoch {epoch}...')
             torch.save(saveGroup, os.path.join(self.checkpoint_dir, 'checkpoint_%d.pth'%epoch))
-            self.saveLosslist(epoch, loss_list, 'train')
+            self._saveLosslist(epoch, loss_list, 'train')
 
         return ap
         
