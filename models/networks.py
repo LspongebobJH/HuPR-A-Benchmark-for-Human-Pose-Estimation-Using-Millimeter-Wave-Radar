@@ -33,11 +33,11 @@ class HuPRNet(nn.Module):
         REmaps = REmaps.squeeze(2).view(batchSize, self.numGroupFrames, -1, self.rangeSize, self.azimuthSize).permute(0, 2, 1, 3, 4)
         return RAmaps, REmaps
     
-    def forward(self, VRDAEmaps_hori, VRDAEmaps_vert, video_id):
+    def forward(self, VRDAEmaps_hori, VRDAEmaps_vert):
         RAmaps, REmaps = self.forward_chirp(VRDAEmaps_hori, VRDAEmaps_vert)
         RAl1feat, RAl2feat, RAfeat = self.RAradarEncoder(RAmaps)
         REl1feat, REl2feat, REfeat = self.REradarEncoder(REmaps)
-        output, gcn_heatmap = self.radarDecoder(RAl1feat, RAl2feat, RAfeat, REl1feat, REl2feat, REfeat, video_id)
+        output, gcn_heatmap = self.radarDecoder(RAl1feat, RAl2feat, RAfeat, REl1feat, REl2feat, REfeat)
         heatmap = torch.sigmoid(output).unsqueeze(2)
         return heatmap, gcn_heatmap
     

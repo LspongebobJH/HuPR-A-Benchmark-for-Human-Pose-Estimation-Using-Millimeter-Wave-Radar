@@ -4,12 +4,10 @@ import numpy as np
 import torch.optim as optim
 from models import HuPRNet, HuPRNetSingle
 from misc import plotHumanPose
-from datasets.dataset import HuPR3D_horivert, collate_fn
+from datasets.dataset import HuPR3D_horivert
 import torch.utils.data as data
 import torch.nn.functional as F
 from tools.base import BaseRunner
-import wandb
-import pickle
 import omegaconf
 import numpy as np
 from math import ceil
@@ -30,10 +28,9 @@ class Runner(BaseRunner):
         keypoints = batch['jointsGroup']
 
         if self.cfg.DATASET.direction == 'all':
-            video_id = batch['video_id']
             VRDAEmaps_hori = batch['VRDAEmap_hori'].float().cuda()
             VRDAEmaps_vert = batch['VRDAEmap_vert'].float().cuda()
-            heatmap, gcn_heatmap = self.model(VRDAEmaps_hori, VRDAEmaps_vert, video_id)
+            heatmap, gcn_heatmap = self.model(VRDAEmaps_hori, VRDAEmaps_vert)
         else:
             VRDAEmaps = batch['VRDAEmap'].float().cuda()
             heatmap, gcn_heatmap = self.model(VRDAEmaps)
@@ -179,14 +176,12 @@ class Runner(BaseRunner):
                                     self.cfg.TRAINING.batchSize,
                                     # shuffle=self.cfg.DATASET.shuffle,
                                     shuffle=False,
-                                    num_workers=self.cfg.SETUP.numWorkers,
-                                    collate_fn=collate_fn if self.cfg.DATASET.direction == 'all' else None)
+                                    num_workers=self.cfg.SETUP.numWorkers)
             self.evalSet = HuPR3D_horivert('val', self.cfg)
             self.evalLoader = data.DataLoader(self.evalSet, 
                                 self.cfg.TEST.batchSize,
                                 shuffle=False,
-                                num_workers=self.cfg.SETUP.numWorkers, 
-                                collate_fn=collate_fn if self.cfg.DATASET.direction == 'all' else None)
+                                num_workers=self.cfg.SETUP.numWorkers)
             
             LR = self.cfg.TRAINING.lr if self.cfg.TRAINING.warmupEpoch == -1 else self.cfg.TRAINING.lr / (self.cfg.TRAINING.warmupGrowth ** self.stepSize)
 
@@ -216,8 +211,7 @@ class Runner(BaseRunner):
         self.testLoader = data.DataLoader(self.testSet, 
                               self.cfg.TEST.batchSize,
                               shuffle=False,
-                              num_workers=self.cfg.SETUP.numWorkers, 
-                              collate_fn=collate_fn if self.cfg.DATASET.direction == 'all' else None)
+                              num_workers=self.cfg.SETUP.numWorkers)
 
         self.beta = 0.0
         self.stepSize = len(self.trainLoader) * self.cfg.TRAINING.warmupEpoch
