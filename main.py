@@ -1,11 +1,5 @@
-import yaml
-import argparse
 from tools import Runner
-from collections import namedtuple
-from argparse import Namespace
-
-import wandb
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf
 
 if __name__ == "__main__":
     cfg_cmd = OmegaConf.from_cli()

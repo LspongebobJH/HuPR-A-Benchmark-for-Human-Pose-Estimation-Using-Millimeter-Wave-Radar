@@ -180,13 +180,13 @@ class Runner(BaseRunner):
                                     # shuffle=self.cfg.DATASET.shuffle,
                                     shuffle=False,
                                     num_workers=self.cfg.SETUP.numWorkers,
-                                    collate_fn=collate_fn)
+                                    collate_fn=collate_fn if self.cfg.DATASET.direction == 'all' else None)
             self.evalSet = HuPR3D_horivert('val', self.cfg)
             self.evalLoader = data.DataLoader(self.evalSet, 
                                 self.cfg.TEST.batchSize,
                                 shuffle=False,
                                 num_workers=self.cfg.SETUP.numWorkers, 
-                                collate_fn=collate_fn)
+                                collate_fn=collate_fn if self.cfg.DATASET.direction == 'all' else None)
             
             LR = self.cfg.TRAINING.lr if self.cfg.TRAINING.warmupEpoch == -1 else self.cfg.TRAINING.lr / (self.cfg.TRAINING.warmupGrowth ** self.stepSize)
 
@@ -217,7 +217,7 @@ class Runner(BaseRunner):
                               self.cfg.TEST.batchSize,
                               shuffle=False,
                               num_workers=self.cfg.SETUP.numWorkers, 
-                              collate_fn=collate_fn)
+                              collate_fn=collate_fn if self.cfg.DATASET.direction == 'all' else None)
 
         self.beta = 0.0
         self.stepSize = len(self.trainLoader) * self.cfg.TRAINING.warmupEpoch

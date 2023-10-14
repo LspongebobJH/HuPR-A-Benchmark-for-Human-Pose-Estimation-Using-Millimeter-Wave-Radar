@@ -199,16 +199,12 @@ class HuPR3D_horivert(BaseDataset):
                     'bbox': bbox}
     
     def __getitem__test__(self, index):
-        frames = [] # TODO: test
         if self.random:
             index = index * random.randint(1, self.sampling_ratio)
         else:
             index = index * self.sampling_ratio
         padSize = index % self.duration
         idx = index - self.numGroupFrames//2 - 1
-        
-        VRDAEmaps_hori = torch.zeros((self.numGroupFrames, self.numFrames, 2, self.r, self.w, self.h))
-        VRDAEmaps_vert = torch.zeros((self.numGroupFrames, self.numFrames, 2, self.r, self.w, self.h))
 
         VRDAERealImag_hori_list, VRDAERealImag_vert_list = [], []
         
@@ -221,9 +217,6 @@ class HuPR3D_horivert(BaseDataset):
                 idx += 1
             VRDAEPath_hori = self.VRDAEPaths_hori[idx]
             VRDAEPath_vert = self.VRDAEPaths_vert[idx]
-
-            frame_idx = re.search(r'\d+', VRDAEPath_hori).group()
-            frames.append(int(frame_idx))
             
             # TODO: for now we need to skip the exception to make sure the pipeline can work
             try:
@@ -250,12 +243,8 @@ class HuPR3D_horivert(BaseDataset):
         return len(self.VRDAEPaths_hori)//self.sampling_ratio
     
 def collate_fn(data_list):
-    # frames_list = [_data.pop('frames') for _data in data_list]
-    # frames_list = torch.stack(frames_list, dim=0)
     data_list = default_collate(data_list)
     image_id = data_list['imageId']
     video_id = [int(('%09d'%term)[:4]) for term in image_id]
     data_list['video_id'] = video_id
-    
-    # return data_list, frames_list
     return data_list
