@@ -123,7 +123,7 @@ class MultiScaleCrossSelfAttentionPRGCNSingle(nn.Module):
     def attention(self, k, q, maps):
         b, c, h, w  = maps.size()
         k, q = k.view(b, c, h * w), q.view(b, c, h * w)
-        spat_attn = torch.einsum('bij,bik->bjk', (k, q))
+        spat_attn = torch.einsum('bij,bik->bjk', (k, q)) 
         maps = maps.view(b, c, h * w)
         maps = torch.einsum('bci,bik->bck', (maps, F.softmax(spat_attn, 1)))
         maps = maps.view(b, c, h, w)

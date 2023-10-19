@@ -19,6 +19,7 @@ import json
 import horovod.torch as hvd
 
 from torch.utils.tensorboard import SummaryWriter
+from tools.utils import sanity_check
 
 class Runner(BaseRunner):
     def __init__(self, cfg):
@@ -43,7 +44,7 @@ class Runner(BaseRunner):
         savePreds = []
         for idx, batch in enumerate(tqdm(dataLoader)):
             self.model.eval()
-            _, _, loss, _, _, pred2d, _ = self.model_forward(batch)
+            _, _, loss, _, _, pred2d, _ = self.model_forward(batch) # pred2d is gcn output heatmap
             
             bbox = batch['bbox']
             imageId = batch['imageId']
@@ -78,7 +79,7 @@ class Runner(BaseRunner):
             loss1_list = []
             loss2_list = []
 
-            if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+            if sanity_check(check_horovod=True, use_horovod=self.cfg.RUN.use_horovod, rank=self.rank):
                 num_batches = len(self.trainLoader)
             else:
                 num_batches = ceil(len(self.trainLoader) / hvd.local_size())
@@ -91,7 +92,7 @@ class Runner(BaseRunner):
                 loss.backward()
                 self.optimizer.step()                    
 
-                if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+                if sanity_check(check_horovod=True, use_horovod=self.cfg.RUN.use_horovod, rank=self.rank):
                     loss_list.append(loss.item())
                     loss1_list.append(loss1.item())
                     loss2_list.append(loss2.item())
@@ -105,10 +106,10 @@ class Runner(BaseRunner):
                         f'Batch time: {time.time() - time_st:.2f}s')
                 time_st = time.time()
                     
-                # if self.cfg.RUN.debug: # TODO: should remove comment
-                #     break
+                if self.cfg.RUN.debug:
+                    break
 
-            if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+            if sanity_check(check_horovod=True, use_horovod=self.cfg.RUN.use_horovod, rank=self.rank):
                 # if idxBatch % self.cfg.TRAINING.lrDecayIter == 0: #200 == 0:
                 #     self.adjustLR(epoch)
                 #     hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
@@ -132,7 +133,7 @@ class Runner(BaseRunner):
                     
     def main(self):
         if self.cfg.RUN.debug:
-            # self.cfg.TRAINING.epochs = 3 # TODO: should remove comment
+            self.cfg.TRAINING.epochs = 3 # TODO: should remove comment
             self.cfg.RUN.logdir = self.cfg.RUN.visdir = 'test'
             self.cfg.RUN.use_horovod = False
             self.cfg.RUN.visualization = False
@@ -140,15 +141,19 @@ class Runner(BaseRunner):
         if self.cfg.RUN.use_horovod:
             hvd.init()
             torch.cuda.set_device(hvd.local_rank())
-        
-        if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod: # TODO: this test needs more elegant judgement
+            self.rank = hvd.local_rank()
+        else:
+            torch.cuda.set_device(0)
+            self.rank = 0
+
+        if sanity_check(check_horovod=True, use_horovod=self.cfg.RUN.use_horovod, rank=self.rank):
             dir_list = [self.dir, self.visdir, self.checkpoint_dir, self.result_dir, self.tensorboard_dir]
             for _dir in dir_list:
                 if not os.path.isdir(_dir):
                     os.mkdir(_dir)
             
-        # TODO: need a more elegant way to judge it
-        if not self.cfg.RUN.debug and not self.cfg.RUN.eval and ((self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod):
+        if sanity_check(check_debug=True, debug=self.cfg.RUN.debug, 
+                        check_horovod=True, use_horovod=self.cfg.RUN.use_horovod, rank=self.rank):
             cfg = omegaconf.OmegaConf.to_container(self.cfg, resolve=True, throw_on_missing=True)
             with open(os.path.join(self.dir, "config.json"), "w") as file:
                 json.dump(cfg, file)
@@ -164,7 +169,7 @@ class Runner(BaseRunner):
             self.trainSet = HuPR3D_horivert('train', self.cfg)
             if self.cfg.RUN.use_horovod:
                 train_sampler = torch.utils.data.distributed.DistributedSampler(
-                    self.trainSet, num_replicas=hvd.size(), rank=hvd.rank(), shuffle=False)
+                    self.trainSet, num_replicas=hvd.size(), rank=self.rank, shuffle=False)
                 self.trainLoader = data.DataLoader(self.trainSet,
                                   self.cfg.TRAINING.batchSize,
                                 #   shuffle=self.cfg.DATASET.shuffle,
@@ -190,7 +195,8 @@ class Runner(BaseRunner):
             elif self.cfg.TRAINING.optimizer == 'adam':  
                 self.optimizer = optim.Adam(self.model.parameters(), lr=LR, betas=(0.9, 0.999), weight_decay=1e-4)
 
-            if self.cfg.RUN.load_checkpoint and ((self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod):
+            if sanity_check(check_horovod=True, use_horovod=self.cfg.RUN.use_horovod, rank=self.rank, 
+                            check_load_checkpoinit=True, load_checkpoint=self.cfg.RUN.load_checkpoint):
                 self.loadModelWeight('checkpoint', checkpoint_dir=self.cfg.RUN.checkpoint_dir, continue_training=True)
 
             if self.cfg.RUN.use_horovod:
@@ -198,7 +204,8 @@ class Runner(BaseRunner):
                 hvd.broadcast_parameters(self.model.state_dict(), root_rank=0)
                 hvd.broadcast_optimizer_state(self.optimizer, root_rank=0)
 
-            if not self.cfg.RUN.debug and ((self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod):
+            if sanity_check(check_debug=True, debug=self.cfg.RUN.debug, 
+                            check_horovod=True, use_horovod=self.cfg.RUN.use_horovod, rank=self.rank):
                 self.run = SummaryWriter(log_dir=self.tensorboard_dir)
 
             print('==========>Train set size:', len(self.trainLoader))
@@ -223,7 +230,7 @@ class Runner(BaseRunner):
             self.train()
             print("=== End Training ===")
 
-        if (self.cfg.RUN.use_horovod and hvd.rank() == 0) or not self.cfg.RUN.use_horovod:
+        if sanity_check(check_horovod=True, use_horovod=self.cfg.RUN.use_horovod, rank=self.rank):
             print("=== Start Evaluation on Test Set ===")
             time_st = time.time()
             self.loadModelWeight('model_best')

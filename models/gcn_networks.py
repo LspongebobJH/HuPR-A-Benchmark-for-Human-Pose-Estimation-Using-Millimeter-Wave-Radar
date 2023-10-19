@@ -65,7 +65,7 @@ class PRGCN(nn.Module):
         nodeFeat = self.generate_node_feature(x) # node features have been sequeezed into 1d vector
         heatmap = self.gcn_forward(nodeFeat).reshape(-1, self.numKeypoints, (self.height//2), (self.width//2))
         heatmap = F.interpolate(heatmap, scale_factor=2.0, mode='bilinear', align_corners=True)
-        return torch.sigmoid(heatmap).unsqueeze(1)
+        return torch.sigmoid(heatmap).unsqueeze(1) # TODO(jiahang): why sigmoid and unsqueeze?
 
 class TempPRGCN(nn.Module):
     def __init__(self, cfg, A):

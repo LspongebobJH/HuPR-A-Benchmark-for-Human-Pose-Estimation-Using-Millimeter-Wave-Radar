@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from models.chirp_networks import MNet
 from models.layers import Encoder3D, MultiScaleCrossSelfAttentionPRGCN, MultiScaleCrossSelfAttentionPRGCNSingle
+from smpl.smpl import SMPLModel
 
 class HuPRNet(nn.Module):
     def __init__(self, cfg):
@@ -20,6 +21,8 @@ class HuPRNet(nn.Module):
         self.RAradarEncoder = Encoder3D(cfg)
         self.REradarEncoder = Encoder3D(cfg)
         self.radarDecoder = MultiScaleCrossSelfAttentionPRGCN(cfg, batchnorm=False, activation=nn.PReLU)
+
+        self.use_smpl = cfg.RUN.use_smpl
 
     def forward_chirp(self, VRDAEmaps_hori, VRDAEmaps_vert):
         batchSize = VRDAEmaps_hori.size(0)
@@ -56,6 +59,10 @@ class HuPRNetSingle(nn.Module):
         self.radarEncoder = Encoder3D(cfg)
         self.radarDecoder = MultiScaleCrossSelfAttentionPRGCNSingle(cfg, batchnorm=False, activation=nn.PReLU)
 
+        if cfg.RUN.use_smpl:
+            self.smpl = SMPLModel(cfg.DATASET.smplModelPath)
+            self.mapper2smpl = nn.Linear(self.heatmapSize ** 2 * cfg.DATASET.numKeypoints, cfg.DATASET.smplInputSize)
+
     def forward_chirp(self, VRDAEmaps):
         batchSize = VRDAEmaps.size(0)
         # Shrink elevation dimension
@@ -68,5 +75,14 @@ class HuPRNetSingle(nn.Module):
         maps = self.forward_chirp(VRDAEmaps)
         l1feat, l2feat, feat = self.radarEncoder(maps)
         output, gcn_heatmap = self.radarDecoder(l1feat, l2feat, feat)
-        heatmap = torch.sigmoid(output).unsqueeze(2)
-        return heatmap, gcn_heatmap
+        # heatmap = torch.sigmoid(output).unsqueeze(2) # TODO(jiahang): why sigmoid and unsqueeze?
+        if hasattr(self, 'smpl'):
+            joint_list = []
+            for _map in [output, gcn_heatmap]:
+                _map = _map.flatten(1)
+                input2smpl = self.mapper2smpl(_map).double()
+                beta, pose, trans = input2smpl[:, :10], input2smpl[:, 10:10+72], input2smpl[:, 10+72:10+72+3]
+                _, joints = self.smpl(beta, pose, trans)
+                joint_list.append(joints)
+
+        return joint_list[0], joint_list[1]

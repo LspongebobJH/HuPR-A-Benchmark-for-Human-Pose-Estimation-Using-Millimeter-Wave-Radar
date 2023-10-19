@@ -12,10 +12,13 @@ RUN:
     use_horovod: False
     debug: False
     visualization: False
+    use_smpl: True
 
 DATASET:
     # direction: 'all' # all: horizontal + vertical, hori: horizontal, vert: vertical
     direction: 'hori'
+    smplInputSize: 85 # 72 + 10 + 3
+    smplModelPath: 'SMPL/models/smpl_f.pkl'
     upsamplingFactor: 4 # from heatmaps (64 x 64) to RGB (256 x 256)
     duration: 600 
     heatmapSize: 64
